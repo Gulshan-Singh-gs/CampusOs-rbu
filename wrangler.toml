@@ -1,6 +1,6 @@
-# Cloudflare Pages / Workers configuration for CampusOS Vite Static SPA
+# Cloudflare Workers configuration for CampusOS Vite Static SPA
 name = "campusos-rbu"
 compatibility_date = "2024-09-23"
 
-# Serve static assets from the Vite output directory
-assets = { directory = "./dist", binding = "ASSETS" }
+# Serve static assets from the Vite output directory without a binding
+assets = { directory = "./dist" }
