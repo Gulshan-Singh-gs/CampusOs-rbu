@@ -53,12 +53,62 @@
   --color-brand-primary: #10b981;
 }
 
+html {
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+}
+
+[data-theme="dark"] html,
+[data-theme="dark"] {
+  scrollbar-color: rgba(100, 116, 139, 0.35) transparent;
+}
+
+/* WebKit & Chromium custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 150ms ease-in-out;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.65);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.25);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(16, 185, 129, 0.5);
+}
+
+/* Custom text selection matching CampusOS emerald aesthetic */
+::selection {
+  background-color: rgba(16, 185, 129, 0.25);
+  color: inherit;
+}
+
 body {
   background-color: var(--page-bg);
   color: var(--text-primary);
   min-height: 100vh;
   margin: 0;
   transition: background-color var(--transition-fast), color var(--transition-fast);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ==========================================================================
