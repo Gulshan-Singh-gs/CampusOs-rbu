@@ -9,6 +9,11 @@ import {
   Sun,
   Moon,
   Sparkles,
+  Award,
+  Users,
+  Compass,
+  Bell,
+  Camera,
 } from 'lucide-react';
 import { useSessionStore } from '@/services/session/sessionStore';
 import { useThemeStore } from '@/shared/hooks/useThemeStore';
@@ -24,7 +29,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const navItems = [
     { to: '/events', icon: CalendarDays, label: 'Events Hub' },
     { to: '/clubs', icon: Users2, label: 'Societies' },
-    { to: '/wizard', icon: FileSignature, label: 'Document Wizard' },
+    { to: '/passport', icon: Award, label: 'Campus Passport' },
+    { to: '/peers', icon: Users, label: 'Social Graph' },
+    { to: '/squad', icon: Sparkles, label: 'Squad Swipe' },
+    { to: '/stories', icon: Camera, label: 'Campus Moments' },
+    { to: '/study-radar', icon: Compass, label: 'Study Radar' },
+    { to: '/notifications', icon: Bell, label: 'Notifications' },
+    { to: '/wizard', icon: FileSignature, label: 'Doc Wizard' },
     { to: '/applications', icon: FileCheck2, label: 'Applications' },
     { to: '/admin', icon: GraduationCap, label: 'Review Portal' },
   ];
@@ -36,13 +47,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     >
       {/* Desktop Sidebar (>= 1024px) */}
       <aside
-        className="hidden lg:flex lg:w-72 flex-col justify-between p-8 sticky top-0 h-screen no-print border-r"
+        className="hidden lg:flex lg:w-72 flex-col justify-between p-6 sticky top-0 h-screen no-print border-r overflow-y-auto"
         style={{
           backgroundColor: 'var(--surface)',
           borderColor: 'var(--surface-border)',
         }}
       >
-        <div className="space-y-10">
+        <div className="space-y-6">
           {/* Brand header */}
           <div className="flex items-center gap-3.5">
             <div
@@ -70,7 +81,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           </div>
 
           {/* Navigation Links */}
-          <nav className="space-y-2">
+          <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -78,7 +89,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
-                    `flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${
+                    `flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
                       isActive
                         ? 'shadow-sm font-semibold'
                         : 'opacity-70 hover:opacity-100 hover:translate-x-0.5'
@@ -90,8 +101,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                     border: isActive ? '1px solid var(--surface-border)' : '1px solid transparent',
                   })}
                 >
-                  <Icon className="w-5 h-5" strokeWidth={1.8} />
-                  {item.label}
+                  <Icon className="w-4 h-4 shrink-0" strokeWidth={1.8} />
+                  <span>{item.label}</span>
                 </NavLink>
               );
             })}
@@ -99,12 +110,12 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         </div>
 
         {/* Footer: User profile & Theme toggle */}
-        <div className="pt-6 border-t space-y-4" style={{ borderColor: 'var(--surface-border)' }}>
+        <div className="pt-4 border-t space-y-3 shrink-0" style={{ borderColor: 'var(--surface-border)' }}>
           {/* Theme Switcher Button */}
           <button
             type="button"
             onClick={toggleTheme}
-            className="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl text-xs font-medium transition-all"
+            className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-medium transition-all"
             style={{
               backgroundColor: 'var(--card-bg)',
               color: 'var(--text-secondary)',
@@ -112,7 +123,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             }}
           >
             <span className="flex items-center gap-2">
-              {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4 text-amber-500" />}
+              {theme === 'dark' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5 text-amber-500" />}
               {theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
             </span>
             <span className="text-[10px] uppercase font-bold tracking-wider opacity-60">Toggle</span>
@@ -120,14 +131,14 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
           {profile ? (
             <div
-              className="flex items-center gap-3 p-3 rounded-2xl border"
+              className="flex items-center gap-3 p-2.5 rounded-xl border"
               style={{
                 backgroundColor: 'var(--card-bg)',
                 borderColor: 'var(--surface-border)',
               }}
             >
               <div
-                className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs"
+                className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs"
                 style={{
                   background: 'var(--surface-dark)',
                   color: 'var(--text-primary)',
@@ -147,14 +158,14 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           ) : (
             <NavLink
               to="/onboarding"
-              className="flex items-center justify-center gap-2 text-xs font-semibold p-3 rounded-2xl transition-all"
+              className="flex items-center justify-center gap-2 text-xs font-semibold p-2.5 rounded-xl transition-all"
               style={{
                 backgroundColor: 'var(--card-bg)',
                 color: 'var(--text-primary)',
                 border: '1px solid var(--surface-border)',
               }}
             >
-              <Sparkles className="w-4 h-4 text-emerald-500" />
+              <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
               Set Up Profile
             </NavLink>
           )}
@@ -199,7 +210,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
             {profile ? (
               <NavLink
-                to="/onboarding"
+                to="/passport"
                 className="flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full"
                 style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--surface-border)' }}
               >
@@ -227,7 +238,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             borderColor: 'var(--surface-border)',
           }}
         >
-          {navItems.map((item) => {
+          {[
+            { to: '/events', icon: CalendarDays, label: 'Events' },
+            { to: '/passport', icon: Award, label: 'Passport' },
+            { to: '/squad', icon: Sparkles, label: 'Squad' },
+            { to: '/peers', icon: Users, label: 'Peers' },
+            { to: '/wizard', icon: FileSignature, label: 'Wizard' },
+          ].map((item) => {
             const Icon = item.icon;
             return (
               <NavLink
@@ -245,7 +262,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                 {({ isActive }) => (
                   <>
                     <Icon className="w-5 h-5 mb-0.5" strokeWidth={isActive ? 2.2 : 1.8} />
-                    <span>{item.label.split(' ')[0]}</span>
+                    <span>{item.label}</span>
                     {isActive && (
                       <span className="w-1 h-1 rounded-full bg-emerald-500 mt-0.5"></span>
                     )}

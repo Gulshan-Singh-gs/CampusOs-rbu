@@ -3,12 +3,12 @@ import { cn } from './Button';
 import { CheckCircle2, Clock, XCircle, FileEdit } from 'lucide-react';
 import type { ApplicationStatus } from '@/shared/types/app.types';
 
-export interface BadgeProps {
+export interface StatusBadgeProps {
   status: ApplicationStatus | 'Draft';
   className?: string;
 }
 
-export const StatusBadge: React.FC<BadgeProps> = ({ status, className }) => {
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className }) => {
   const config = {
     Approved: {
       bg: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
@@ -44,6 +44,38 @@ export const StatusBadge: React.FC<BadgeProps> = ({ status, className }) => {
     >
       <Icon className="w-3.5 h-3.5" />
       {status}
+    </span>
+  );
+};
+
+export interface GenericBadgeProps {
+  children: React.ReactNode;
+  variant?: 'default' | 'success' | 'warning' | 'info' | 'danger';
+  className?: string;
+}
+
+export const Badge: React.FC<GenericBadgeProps> = ({
+  children,
+  variant = 'default',
+  className,
+}) => {
+  const styles = {
+    default: 'bg-slate-700/50 text-slate-200 border-slate-600/50',
+    success: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+    warning: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+    info: 'bg-primary-500/15 text-primary-400 border-primary-500/30',
+    danger: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
+  }[variant];
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border',
+        styles,
+        className
+      )}
+    >
+      {children}
     </span>
   );
 };

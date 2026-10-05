@@ -1,5 +1,5 @@
 // src/shared/types/app.types.ts
-// Domain layer — clean architecture, no database or framework dependencies
+// Domain layer — clean architecture, enterprise domain model for CampusOS
 
 export type Department =
   | 'CSE'
@@ -16,6 +16,13 @@ export type Department =
   | 'M.Com'
   | 'Other';
 
+export interface DepartmentEntity {
+  readonly id: string;
+  readonly name: string;
+  readonly facultyHead: string | null;
+  readonly code: string;
+}
+
 export type ClubCategory =
   | 'Cultural'
   | 'Technical'
@@ -25,6 +32,8 @@ export type ClubCategory =
   | 'Other';
 
 export type EventCategory = 'Cultural' | 'Technical' | 'Sports';
+
+export type EventLifecycle = 'draft' | 'published' | 'cancelled' | 'completed' | 'archived';
 
 export type BannerGradient = 'cultural' | 'technical' | 'sports' | 'default';
 
@@ -72,7 +81,32 @@ export interface AttendanceTicket {
   readonly createdAt: string;
 }
 
-// ---- Profile -------------------------------------------------
+// ---- Profile & Passport ---------------------------------------
+
+export interface Skill {
+  readonly id: string;
+  readonly name: string;
+  readonly category: string;
+}
+
+export interface StudentSkill {
+  readonly id: string;
+  readonly studentId: string;
+  readonly skillId: string;
+  readonly skillName: string;
+  readonly proficiencyLevel: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+  readonly endorsementCount: number;
+}
+
+export interface StudentAchievement {
+  readonly id: string;
+  readonly studentId: string;
+  readonly title: string;
+  readonly issuer: string;
+  readonly issueDate: string;
+  readonly badgeIcon: string;
+  readonly isVerified: boolean;
+}
 
 export interface Profile {
   readonly id: string;
@@ -83,7 +117,14 @@ export interface Profile {
   readonly yearOfStudy: number;
   readonly role?: UserRole;
   readonly isVerified?: boolean;
+  readonly avatarUrl?: string;
+  readonly bio?: string;
+  readonly githubUrl?: string;
+  readonly linkedinUrl?: string;
   readonly createdAt: string;
+  // Campus Passport relational aggregations
+  readonly skills?: StudentSkill[];
+  readonly achievements?: StudentAchievement[];
 }
 
 export interface CreateProfileInput {
@@ -93,6 +134,8 @@ export interface CreateProfileInput {
   department: Department;
   yearOfStudy: number;
   role?: UserRole;
+  bio?: string;
+  avatarUrl?: string;
 }
 
 // ---- Club ----------------------------------------------------
@@ -119,8 +162,13 @@ export interface CampusEvent {
   readonly venue: string;
   readonly eventDate: string; // "YYYY-MM-DD"
   readonly eventTime: string; // "HH:MM"
+  readonly startsAt?: string; // Canonical ISO timestamp
+  readonly endsAt?: string;   // Canonical ISO timestamp
+  readonly lifecycleStatus?: EventLifecycle;
+  readonly maxCapacity?: number;
   readonly rsvpCount: number;
   readonly bannerGradient: BannerGradient;
+  readonly coordinates?: { lat: number; lng: number };
 }
 
 // ---- RSVP ----------------------------------------------------
@@ -159,4 +207,94 @@ export interface CreateApplicationInput {
   email: string;
   targetAuthority: TargetAuthority;
   formData: Record<string, unknown>;
+}
+
+// ---- Social Graph & Connections ------------------------------
+
+export type ConnectionStatus = 'pending' | 'accepted' | 'rejected' | 'blocked';
+
+export interface Connection {
+  readonly id: string;
+  readonly requesterId: string;
+  readonly recipientId: string;
+  readonly status: ConnectionStatus;
+  readonly createdAt: string;
+  readonly peerProfile?: Partial<Profile>;
+}
+
+// ---- Squad Matching & Intents --------------------------------
+
+export interface ProjectIntent {
+  readonly id: string;
+  readonly authorId: string;
+  readonly authorName: string;
+  readonly authorDepartment: Department;
+  readonly projectTitle: string;
+  readonly tagline: string;
+  readonly description: string;
+  readonly targetRoles: string[];
+  readonly requiredSkills: string[];
+  readonly isActive: boolean;
+  readonly createdAt: string;
+}
+
+// ---- Ephemeral Realtime Chat ---------------------------------
+
+export interface ChatMessage {
+  readonly id: string;
+  readonly roomId: string;
+  readonly senderId: string;
+  readonly senderName: string;
+  readonly content: string;
+  readonly createdAt: string;
+}
+
+export interface ChatRoom {
+  readonly id: string;
+  readonly title: string;
+  readonly isEphemeral: boolean;
+  readonly expiresAt?: string;
+  readonly members?: Profile[];
+  readonly lastMessage?: ChatMessage;
+}
+
+// ---- Campus Stories ------------------------------------------
+
+export interface Story {
+  readonly id: string;
+  readonly authorId: string;
+  readonly authorName: string;
+  readonly authorAvatar?: string;
+  readonly mediaUrl: string;
+  readonly caption?: string;
+  readonly expiresAt: string;
+  readonly createdAt: string;
+}
+
+// ---- Study Buddy Radar ---------------------------------------
+
+export interface StudySession {
+  readonly id: string;
+  readonly studentId: string;
+  readonly studentName: string;
+  readonly department: Department;
+  readonly subject: string;
+  readonly venue: string;
+  readonly availableUntil: string;
+  readonly lookingFor?: string;
+  readonly isActive: boolean;
+  readonly createdAt: string;
+}
+
+// ---- Notifications -------------------------------------------
+
+export interface NotificationItem {
+  readonly id: string;
+  readonly recipientId: string;
+  readonly title: string;
+  readonly body: string;
+  readonly category: 'rsvp' | 'connection' | 'chat' | 'application' | 'system';
+  readonly linkUrl?: string;
+  readonly isRead: boolean;
+  readonly createdAt: string;
 }
