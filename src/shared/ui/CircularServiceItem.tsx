@@ -34,27 +34,27 @@ export const CircularServiceItem: React.FC<CircularServiceItemProps> = ({
       >
         {/* Line Icon */}
         <Icon
-          className="w-10 h-10 sm:w-12 sm:h-12 transition-transform duration-200 group-hover:scale-105"
+          className="w-7 h-7 sm:w-8 sm:h-8 transition-transform duration-200 group-hover:scale-105"
           style={{ color: 'var(--icon-color)' }}
           strokeWidth={1.8}
         />
 
         {/* Optional floating badge */}
         {badge && (
-          <span className="absolute top-2 right-2 px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500 text-white shadow-sm">
+          <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-emerald-500 text-white shadow-sm">
             {badge}
           </span>
         )}
       </div>
 
       {/* Text label underneath */}
-      <div className="mt-4 sm:mt-5 max-w-[150px] space-y-1">
-        <h4 className="text-sm sm:text-base font-medium tracking-tight transition-colors leading-snug"
+      <div className="mt-3 max-w-[130px] space-y-0.5">
+        <h4 className="text-xs sm:text-sm font-semibold tracking-tight transition-colors leading-snug"
             style={{ color: 'var(--text-primary)' }}>
           {title}
         </h4>
         {subtitle && (
-          <p className="text-xs transition-colors" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-[11px] leading-tight transition-colors line-clamp-1" style={{ color: 'var(--text-secondary)' }}>
             {subtitle}
           </p>
         )}

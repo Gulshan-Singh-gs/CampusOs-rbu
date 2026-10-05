@@ -66,8 +66,8 @@ body {
    ========================================================================== */
 
 .circular-service-button {
-  width: clamp(118px, 13vw, 172px);
-  height: clamp(118px, 13vw, 172px);
+  width: clamp(76px, 8vw, 104px);
+  height: clamp(76px, 8vw, 104px);
   border-radius: 50%;
   position: relative;
   display: flex;
