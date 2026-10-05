@@ -27,31 +27,33 @@ export const WizardView: React.FC = () => {
   const [docType, setDocType] = useState<DocType>('venue');
 
   // Form Fields
-  const [title, setTitle] = useState('Auditorium Permission for Annual Cultural Showcase');
-  const [studentName, setStudentName] = useState(profile?.fullName || 'Aaravpreet Singh');
-  const [rollNumber, setRollNumber] = useState(profile?.rollNumber || 'RBU21CSE045');
+  const [title, setTitle] = useState(
+    docType === 'venue'
+      ? 'Auditorium Permission for Campus Event'
+      : docType === 'financial'
+      ? 'Merit-cum-Means Financial Assistance Grant'
+      : 'Duty Leave & Examination NOC Request'
+  );
+  const [studentName, setStudentName] = useState(profile?.fullName || '');
+  const [rollNumber, setRollNumber] = useState(profile?.rollNumber || '');
   const [department, setDepartment] = useState<Department>(profile?.department || 'CSE');
 
   // Venue Specific
   const [venue, setVenue] = useState('Main University Auditorium');
-  const [eventDate, setEventDate] = useState('2026-11-20');
-  const [eventTime, setEventTime] = useState('14:00');
-  const [expectedAttendance, setExpectedAttendance] = useState('500');
+  const [eventDate, setEventDate] = useState('');
+  const [eventTime, setEventTime] = useState('');
+  const [expectedAttendance, setExpectedAttendance] = useState('');
 
   // Financial Specific
-  const [cgpa, setCgpa] = useState('8.75');
-  const [familyIncome, setFamilyIncome] = useState('250000');
-  const [requestedAmount, setRequestedAmount] = useState('15000');
-  const [financialReason, setFinancialReason] = useState(
-    'Assistance for semester book grants and hackathon prototype hardware components.'
-  );
+  const [cgpa, setCgpa] = useState('');
+  const [familyIncome, setFamilyIncome] = useState('');
+  const [requestedAmount, setRequestedAmount] = useState('');
+  const [financialReason, setFinancialReason] = useState('');
 
   // NOC Specific
-  const [examName, setExamName] = useState('Mid-Semester Test (MST-II)');
-  const [examDate, setExamDate] = useState('2026-11-22');
-  const [nocReason, setNocReason] = useState(
-    'Representing Rayat Bahra University at National Smart India Hackathon Grand Finale.'
-  );
+  const [examName, setExamName] = useState('');
+  const [examDate, setExamDate] = useState('');
+  const [nocReason, setNocReason] = useState('');
 
   const [submittedRef, setSubmittedRef] = useState<string | null>(null);
 

@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSessionStore } from '@/services/session/sessionStore';
+import { supabase } from '@/shared/lib/supabase';
 import { Button } from '@/shared/ui/Button';
+import { EmptyState } from '@/shared/ui/EmptyState';
 import {
   Bell,
   CheckCircle,
@@ -13,41 +15,53 @@ import type { NotificationItem } from '@/shared/types/app.types';
 
 export const NotificationsCenterView: React.FC = () => {
   const { profile } = useSessionStore();
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: 'n1',
-      recipientId: profile?.id || 'demo',
-      title: 'RSVP Confirmed: Annual Hackathon 2026',
-      body: 'Your attendance QR ticket has been generated. Show it at Turing Hall entry.',
-      category: 'rsvp',
-      linkUrl: '/events',
-      isRead: false,
-      createdAt: new Date(Date.now() - 1800000).toISOString(),
-    },
-    {
-      id: 'n2',
-      recipientId: profile?.id || 'demo',
-      title: 'New Connection Request',
-      body: 'Rohan Varma (ECE, Year 2) sent you a connection request.',
-      category: 'connection',
-      linkUrl: '/peers',
-      isRead: false,
-      createdAt: new Date(Date.now() - 7200000).toISOString(),
-    },
-    {
-      id: 'n3',
-      recipientId: profile?.id || 'demo',
-      title: 'Application Status Update',
-      body: 'Your NOC application for Inter-University Tech Fest has been Approved by HOD.',
-      category: 'application',
-      linkUrl: '/applications',
-      isRead: true,
-      createdAt: new Date(Date.now() - 86400000).toISOString(),
-    },
-  ]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
-  const markAllAsRead = () => {
+  useEffect(() => {
+    async function loadNotifications() {
+      if (!profile?.id) return;
+      try {
+        const { data: remoteNotifications } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('recipient_id', profile.id)
+          .order('created_at', { ascending: false });
+
+        if (remoteNotifications && remoteNotifications.length > 0) {
+          setNotifications(
+            remoteNotifications.map((n: any) => ({
+              id: n.id,
+              recipientId: n.recipient_id,
+              title: n.title,
+              body: n.body,
+              category: n.category,
+              linkUrl: n.link_url,
+              isRead: n.is_read,
+              createdAt: n.created_at,
+            }))
+          );
+        } else {
+          setNotifications([]);
+        }
+      } catch (err) {
+        console.warn('Notifications sync notice:', err);
+      }
+    }
+    loadNotifications();
+  }, [profile?.id]);
+
+  const markAllAsRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    try {
+      if (profile?.id) {
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('recipient_id', profile.id);
+      }
+    } catch (err) {
+      console.warn('Mark all read sync notice:', err);
+    }
   };
 
   const getCategoryIcon = (cat: NotificationItem['category']) => {
@@ -85,31 +99,39 @@ export const NotificationsCenterView: React.FC = () => {
 
       {/* Notifications Feed */}
       <div className="space-y-3">
-        {notifications.map((item) => (
-          <div
-            key={item.id}
-            className={`soft-card p-4 sm:p-5 flex items-start gap-4 transition-all ${
-              item.isRead ? 'opacity-70' : 'border-primary-500/30 shadow-sm'
-            }`}
-          >
-            <div className="p-2.5 rounded-xl bg-slate-800/80 shrink-0">
-              {getCategoryIcon(item.category)}
-            </div>
-            <div className="flex-1 space-y-1">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-                  {item.title}
-                </h3>
-                <span className="text-[11px] text-slate-400">
-                  {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+        {notifications.length === 0 ? (
+          <EmptyState
+            icon={Bell}
+            title="No Notifications Yet"
+            description="You are all caught up! Real-time alerts for RSVP tickets, society updates, and faculty endorsements will appear here."
+          />
+        ) : (
+          notifications.map((item) => (
+            <div
+              key={item.id}
+              className={`soft-card p-4 sm:p-5 flex items-start gap-4 transition-all ${
+                item.isRead ? 'opacity-70' : 'border-primary-500/30 shadow-sm'
+              }`}
+            >
+              <div className="p-2.5 rounded-xl bg-slate-800/80 shrink-0">
+                {getCategoryIcon(item.category)}
               </div>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                {item.body}
-              </p>
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                    {item.title}
+                  </h3>
+                  <span className="text-[11px] text-slate-400">
+                    {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                  {item.body}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSessionStore } from '@/services/session/sessionStore';
+import { supabase } from '@/shared/lib/supabase';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
+import { EmptyState } from '@/shared/ui/EmptyState';
 import {
   Sparkles,
   Users,
   CheckCircle2,
   XCircle,
   Rocket,
+  FolderGit2,
 } from 'lucide-react';
 import type { ProjectIntent } from '@/shared/types/app.types';
 import { ProjectIntentInputSchema } from '@/shared/lib/validation';
@@ -16,39 +19,44 @@ import { ProjectIntentInputSchema } from '@/shared/lib/validation';
 export const SquadSwipeView: React.FC = () => {
   const { profile } = useSessionStore();
   const [activeTab, setActiveTab] = useState<'discover' | 'create'>('discover');
-
-  // Sample active project intents
-  const [intents, setIntents] = useState<ProjectIntent[]>([
-    {
-      id: 'i1',
-      authorId: 'u101',
-      authorName: 'Tanvi Kapoor',
-      authorDepartment: 'CSE',
-      projectTitle: 'Autonomous Solar Drone for Campus Surveillance',
-      tagline: 'Building AI-driven embedded flight controllers for smart agriculture & campus security.',
-      description: 'Looking for 1 Embedded Hardware Engineer (Raspberry Pi/PX4) and 1 Computer Vision engineer (YOLOv8/PyTorch) to compete in the Smart India Hackathon.',
-      targetRoles: ['Hardware Engineer', 'Computer Vision Dev'],
-      requiredSkills: ['Python', 'PyTorch', 'IoT / Arduino'],
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'i2',
-      authorId: 'u102',
-      authorName: 'Arjun Mehta',
-      authorDepartment: 'ECE',
-      projectTitle: 'Decentralized Microgrid Energy Ledger',
-      tagline: 'Smart contracts on Polygon to trade rooftop solar credits between university departments.',
-      description: 'We already built the solar telemetry meters. Need a Web3 frontend specialist and smart contract auditor.',
-      targetRoles: ['Frontend Lead', 'Solidity Auditor'],
-      requiredSkills: ['React & TypeScript', 'Solidity', 'Tailwind'],
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    },
-  ]);
-
+  const [intents, setIntents] = useState<ProjectIntent[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [matched, setMatched] = useState<ProjectIntent | null>(null);
+
+  useEffect(() => {
+    async function loadIntents() {
+      try {
+        const { data: remoteIntents } = await supabase
+          .from('project_intents')
+          .select('*')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+
+        if (remoteIntents && remoteIntents.length > 0) {
+          setIntents(
+            remoteIntents.map((i: any) => ({
+              id: i.id,
+              authorId: i.author_id,
+              authorName: i.author_name || 'Student Creator',
+              authorDepartment: i.author_department || 'CSE',
+              projectTitle: i.project_title,
+              tagline: i.tagline,
+              description: i.description,
+              targetRoles: i.target_roles || [],
+              requiredSkills: i.required_skills || [],
+              isActive: i.is_active,
+              createdAt: i.created_at,
+            }))
+          );
+        } else {
+          setIntents([]);
+        }
+      } catch (err) {
+        console.warn('Squad intents sync notice:', err);
+      }
+    }
+    loadIntents();
+  }, []);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -60,9 +68,20 @@ export const SquadSwipeView: React.FC = () => {
 
   const currentIntent = intents[currentIndex];
 
-  const handleSwipe = (direction: 'pass' | 'like') => {
-    if (direction === 'like') {
+  const handleSwipe = async (direction: 'pass' | 'like') => {
+    if (direction === 'like' && currentIntent) {
       setMatched(currentIntent);
+      try {
+        if (profile?.id) {
+          await supabase.from('intent_swipes').insert({
+            intent_id: currentIntent.id,
+            swiper_id: profile.id,
+            action: 'like',
+          });
+        }
+      } catch (err) {
+        console.warn('Swipe sync notice:', err);
+      }
     }
     if (currentIndex < intents.length - 1) {
       setCurrentIndex((prev) => prev + 1);
@@ -71,7 +90,7 @@ export const SquadSwipeView: React.FC = () => {
     }
   };
 
-  const handleCreateIntent = (e: React.FormEvent) => {
+  const handleCreateIntent = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsed = ProjectIntentInputSchema.safeParse({
       projectTitle: title,
@@ -103,6 +122,25 @@ export const SquadSwipeView: React.FC = () => {
     setIntents([newIntent, ...intents]);
     setActiveTab('discover');
     setCurrentIndex(0);
+
+    try {
+      if (profile?.id) {
+        await supabase.from('project_intents').insert({
+          id: newIntent.id,
+          author_id: profile.id,
+          author_name: newIntent.authorName,
+          author_department: newIntent.authorDepartment,
+          project_title: newIntent.projectTitle,
+          tagline: newIntent.tagline,
+          description: newIntent.description,
+          target_roles: newIntent.targetRoles,
+          required_skills: newIntent.requiredSkills,
+          is_active: true,
+        });
+      }
+    } catch (err) {
+      console.warn('Project intent persistence notice:', err);
+    }
   };
 
   return (
@@ -243,6 +281,14 @@ export const SquadSwipeView: React.FC = () => {
               </button>
             </div>
           </div>
+        ) : intents.length === 0 ? (
+          <EmptyState
+            icon={FolderGit2}
+            title="No Active Project Pitches"
+            description="Be the first student to pitch a hackathon idea, capstone project, or open-source initiative to assemble a squad."
+            actionLabel="Create Project Pitch"
+            onAction={() => setActiveTab('create')}
+          />
         ) : (
           <div className="soft-card p-12 text-center space-y-4">
             <Users className="w-12 h-12 mx-auto text-slate-500" />

@@ -1,48 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/shared/lib/supabase';
 import { Button } from '@/shared/ui/Button';
+import { EmptyState } from '@/shared/ui/EmptyState';
 import {
   MapPin,
   Clock,
   Sparkles,
   Camera,
+  Image,
 } from 'lucide-react';
 import type { Story } from '@/shared/types/app.types';
 
 export const CampusStoriesView: React.FC = () => {
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
+  const [stories, setStories] = useState<Story[]>([]);
 
-  const stories: Story[] = [
-    {
-      id: 'st1',
-      authorId: 'u1',
-      authorName: 'ACM Student Chapter',
-      authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      mediaUrl: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&auto=format&fit=crop&q=80',
-      caption: 'Hackathon kickoff at Campus Central Auditorium! 50+ squads registered. 🚀🔥',
-      expiresAt: new Date(Date.now() + 68400000).toISOString(),
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'st2',
-      authorId: 'u2',
-      authorName: 'RBU Sports Council',
-      authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-      mediaUrl: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&auto=format&fit=crop&q=80',
-      caption: 'Inter-Department Cricket Tournament Finals underway at Ground 1! 🏏🏆',
-      expiresAt: new Date(Date.now() + 45000000).toISOString(),
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'st3',
-      authorId: 'u3',
-      authorName: 'Robotics Club',
-      authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-      mediaUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&auto=format&fit=crop&q=80',
-      caption: 'Testing line-follower & maze solver bots in the Mechatronics Lab.',
-      expiresAt: new Date(Date.now() + 32000000).toISOString(),
-      createdAt: new Date().toISOString(),
-    },
-  ];
+  useEffect(() => {
+    async function loadStories() {
+      try {
+        const { data: remoteStories } = await supabase
+          .from('stories')
+          .select('*')
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false });
+
+        if (remoteStories && remoteStories.length > 0) {
+          setStories(
+            remoteStories.map((s: any) => ({
+              id: s.id,
+              authorId: s.author_id,
+              authorName: s.author_name || 'Campus Student',
+              authorAvatar: s.author_avatar || '',
+              mediaUrl: s.media_url,
+              caption: s.caption || '',
+              expiresAt: s.expires_at,
+              createdAt: s.created_at,
+            }))
+          );
+        } else {
+          setStories([]);
+        }
+      } catch (err) {
+        console.warn('Stories sync notice:', err);
+      }
+    }
+    loadStories();
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
@@ -63,36 +66,52 @@ export const CampusStoriesView: React.FC = () => {
       </div>
 
       {/* Stories Rail */}
-      <div className="flex items-center gap-4 overflow-x-auto pb-4 no-scrollbar">
-        {stories.map((story) => (
-          <div
-            key={story.id}
-            onClick={() => setSelectedStory(story)}
-            className="flex flex-col items-center gap-2 cursor-pointer shrink-0 group"
-          >
-            <div className="w-20 h-20 rounded-full p-[2.5px] bg-gradient-to-tr from-amber-500 via-rose-500 to-primary-500 group-hover:scale-105 transition-transform">
-              <img
-                src={story.authorAvatar}
-                alt={story.authorName}
-                className="w-full h-full rounded-full object-cover border-2 border-slate-900"
-              />
+      {stories.length > 0 && (
+        <div className="flex items-center gap-4 overflow-x-auto pb-4 no-scrollbar">
+          {stories.map((story) => (
+            <div
+              key={story.id}
+              onClick={() => setSelectedStory(story)}
+              className="flex flex-col items-center gap-2 cursor-pointer shrink-0 group"
+            >
+              <div className="w-20 h-20 rounded-full p-[2.5px] bg-gradient-to-tr from-amber-500 via-rose-500 to-primary-500 group-hover:scale-105 transition-transform">
+                {story.authorAvatar ? (
+                  <img
+                    src={story.authorAvatar}
+                    alt={story.authorName}
+                    className="w-full h-full rounded-full object-cover border-2 border-slate-900"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs text-slate-200">
+                    {story.authorName.charAt(0)}
+                  </div>
+                )}
+              </div>
+              <span className="text-xs font-medium max-w-[80px] truncate text-center" style={{ color: 'var(--text-primary)' }}>
+                {story.authorName}
+              </span>
             </div>
-            <span className="text-xs font-medium max-w-[80px] truncate text-center" style={{ color: 'var(--text-primary)' }}>
-              {story.authorName}
-            </span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Story View Modal / Active Showcase */}
-      <div className="soft-card p-6 sm:p-8 space-y-6">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary-500" />
-          Featured Campus Moment
-        </h2>
+      {stories.length === 0 ? (
+        <EmptyState
+          icon={Image}
+          title="No Active Campus Stories"
+          description="Ephemeral stories submitted by verified clubs and students expire automatically after 24 hours."
+          actionLabel="Share a Moment"
+          onAction={() => alert('Camera upload is active. Max image size: 400KB.')}
+        />
+      ) : (
+        <div className="soft-card p-6 sm:p-8 space-y-6">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary-500" />
+            Featured Campus Moment
+          </h2>
 
-        {selectedStory || stories[0] ? (
-          (() => {
+          {(() => {
             const current = selectedStory || stories[0];
             return (
               <div className="relative rounded-2xl overflow-hidden aspect-video max-h-[480px] bg-black flex items-center justify-center">
@@ -107,11 +126,17 @@ export const CampusStoriesView: React.FC = () => {
                 {/* Top story header */}
                 <div className="absolute top-4 left-4 right-4 flex items-center justify-between text-white">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={current.authorAvatar}
-                      alt={current.authorName}
-                      className="w-9 h-9 rounded-full object-cover border border-white/50"
-                    />
+                    {current.authorAvatar ? (
+                      <img
+                        src={current.authorAvatar}
+                        alt={current.authorName}
+                        className="w-9 h-9 rounded-full object-cover border border-white/50"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs border border-white/50">
+                        {current.authorName.charAt(0)}
+                      </div>
+                    )}
                     <div>
                       <p className="text-sm font-bold">{current.authorName}</p>
                       <p className="text-[10px] text-white/75 flex items-center gap-1">
@@ -128,9 +153,9 @@ export const CampusStoriesView: React.FC = () => {
                 </div>
               </div>
             );
-          })()
-        ) : null}
-      </div>
+          })()}
+        </div>
+      )}
 
       {/* Campus Map Mini-Visualizer (Leaflet / OSM Free Architecture) */}
       <div className="soft-card p-6 sm:p-8 space-y-4">

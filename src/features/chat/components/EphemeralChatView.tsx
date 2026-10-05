@@ -1,47 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSessionStore } from '@/services/session/sessionStore';
+import { supabase } from '@/shared/lib/supabase';
 import { Button } from '@/shared/ui/Button';
-import { Send, Lock, Clock } from 'lucide-react';
+import { EmptyState } from '@/shared/ui/EmptyState';
+import { Send, Lock, Clock, MessageSquare } from 'lucide-react';
 import type { ChatMessage } from '@/shared/types/app.types';
 
 export const EphemeralChatView: React.FC = () => {
   const { profile } = useSessionStore();
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'm1',
-      roomId: 'room-solar-drone',
-      senderId: 'u101',
-      senderName: 'Tanvi Kapoor',
-      content: 'Hey! Glad you checked out our Autonomous Drone project! Are you familiar with ROS2 or PX4 firmware?',
-      createdAt: new Date(Date.now() - 3600000).toISOString(),
-    },
-    {
-      id: 'm2',
-      roomId: 'room-solar-drone',
-      senderId: profile?.id || 'demo',
-      senderName: profile?.fullName || 'Aaravpreet Singh',
-      content: 'Hey Tanvi, yes! I previously built telemetry sensors and worked with Pixhawk flight controllers in Semester 4.',
-      createdAt: new Date(Date.now() - 1800000).toISOString(),
-    },
-  ]);
-
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputVal, setInputVal] = useState('');
+  const roomId = '00000000-0000-0000-0000-000000000001';
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  useEffect(() => {
+    async function loadChatMessages() {
+      try {
+        const { data: remoteMsgs } = await supabase
+          .from('chat_messages')
+          .select('id, room_id, sender_id, content, created_at, profiles(full_name)')
+          .order('created_at', { ascending: true })
+          .limit(50);
+
+        if (remoteMsgs && remoteMsgs.length > 0) {
+          setMessages(
+            remoteMsgs.map((m: any) => ({
+              id: m.id,
+              roomId: m.room_id,
+              senderId: m.sender_id,
+              senderName: m.profiles?.full_name || 'Collaborator',
+              content: m.content,
+              createdAt: m.created_at,
+            }))
+          );
+        } else {
+          setMessages([]);
+        }
+      } catch (err) {
+        console.warn('Chat messages sync notice:', err);
+      }
+    }
+    loadChatMessages();
+  }, [roomId]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputVal.trim()) return;
+    if (!inputVal.trim() || !profile?.id) return;
 
+    const trimmed = inputVal.trim();
     const newMsg: ChatMessage = {
       id: crypto.randomUUID(),
-      roomId: 'room-solar-drone',
-      senderId: profile?.id || 'demo',
-      senderName: profile?.fullName || 'Aaravpreet Singh',
-      content: inputVal.trim(),
+      roomId,
+      senderId: profile.id,
+      senderName: profile.fullName || 'Anonymous Student',
+      content: trimmed,
       createdAt: new Date().toISOString(),
     };
 
     setMessages((prev) => [...prev, newMsg]);
     setInputVal('');
+
+    try {
+      await supabase.from('chat_messages').insert({
+        id: newMsg.id,
+        room_id: roomId,
+        sender_id: profile.id,
+        content: trimmed,
+      });
+    } catch (err) {
+      console.warn('Chat message persistence notice:', err);
+    }
   };
 
   return (
@@ -73,30 +100,38 @@ export const EphemeralChatView: React.FC = () => {
         className="soft-card p-4 sm:p-6 min-h-[420px] max-h-[550px] overflow-y-auto space-y-4 flex flex-col justify-end"
         style={{ borderColor: 'var(--surface-border)' }}
       >
-        <div className="space-y-3">
-          {messages.map((msg) => {
-            const isMe = msg.senderId === (profile?.id || 'demo');
-            return (
-              <div
-                key={msg.id}
-                className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
-              >
-                <span className="text-[10px] text-slate-400 mb-1 px-1">
-                  {msg.senderName} • {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+        {messages.length === 0 ? (
+          <EmptyState
+            icon={MessageSquare}
+            title="Encrypted Squad Room Ready"
+            description="No messages yet in this collaboration room. Say hello to begin coordinating with your squad."
+          />
+        ) : (
+          <div className="space-y-3">
+            {messages.map((msg) => {
+              const isMe = msg.senderId === (profile?.id || 'demo');
+              return (
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
-                    isMe
-                      ? 'bg-primary-600 text-white rounded-br-none shadow-sm'
-                      : 'bg-slate-800 text-slate-100 rounded-bl-none border border-slate-700'
-                  }`}
+                  key={msg.id}
+                  className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                 >
-                  {msg.content}
+                  <span className="text-[10px] text-slate-400 mb-1 px-1">
+                    {msg.senderName} • {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                      isMe
+                        ? 'bg-primary-600 text-white rounded-br-none shadow-sm'
+                        : 'bg-slate-800 text-slate-100 rounded-bl-none border border-slate-700'
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Input box */}

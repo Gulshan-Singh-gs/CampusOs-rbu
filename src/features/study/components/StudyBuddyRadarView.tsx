@@ -1,45 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSessionStore } from '@/services/session/sessionStore';
+import { supabase } from '@/shared/lib/supabase';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { Badge } from '@/shared/ui/Badge';
+import { EmptyState } from '@/shared/ui/EmptyState';
 import {
   Compass,
   MapPin,
   Clock,
   Plus,
   CheckCircle,
+  BookOpen,
 } from 'lucide-react';
 import type { StudySession } from '@/shared/types/app.types';
 
 export const StudyBuddyRadarView: React.FC = () => {
   const { profile } = useSessionStore();
-  const [activeSessions, setActiveSessions] = useState<StudySession[]>([
-    {
-      id: 's1',
-      studentId: 'u201',
-      studentName: 'Harleen Dhillon',
-      department: 'CSE',
-      subject: 'Operating Systems & Concurrency',
-      venue: 'Central Library, 2nd Floor Quiet Zone',
-      availableUntil: new Date(Date.now() + 10800000).toISOString(),
-      lookingFor: 'Reviewing semaphore algorithms and deadlock prevention questions.',
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 's2',
-      studentId: 'u202',
-      studentName: 'Sahil Verma',
-      department: 'ECE',
-      subject: 'Digital Signal Processing (DSP)',
-      venue: 'Turing Block Café Terrace',
-      availableUntil: new Date(Date.now() + 7200000).toISOString(),
-      lookingFor: 'Solving past year question papers for upcoming mid-terms.',
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    },
-  ]);
+  const [activeSessions, setActiveSessions] = useState<StudySession[]>([]);
+
+  useEffect(() => {
+    async function loadSessions() {
+      try {
+        const { data: remoteSessions } = await supabase
+          .from('study_sessions')
+          .select('*')
+          .eq('is_active', true)
+          .gt('available_until', new Date().toISOString())
+          .order('available_until', { ascending: false });
+
+        if (remoteSessions && remoteSessions.length > 0) {
+          setActiveSessions(
+            remoteSessions.map((s: any) => ({
+              id: s.id,
+              studentId: s.student_id,
+              studentName: s.student_name || 'Anonymous Student',
+              department: s.department || 'CSE',
+              subject: s.subject,
+              venue: s.venue,
+              availableUntil: s.available_until,
+              lookingFor: s.looking_for || '',
+              isActive: s.is_active,
+              createdAt: s.created_at,
+            }))
+          );
+        } else {
+          setActiveSessions([]);
+        }
+      } catch (err) {
+        console.warn('Study sessions sync notice:', err);
+      }
+    }
+    loadSessions();
+  }, []);
 
   // Broadcast presence state
   const [isBroadcasting, setIsBroadcasting] = useState(false);
@@ -48,7 +61,7 @@ export const StudyBuddyRadarView: React.FC = () => {
   const duration = 2;
   const [lookingFor, setLookingFor] = useState('');
 
-  const handleStartSession = (e: React.FormEvent) => {
+  const handleStartSession = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject.trim()) return;
 
@@ -64,6 +77,24 @@ export const StudyBuddyRadarView: React.FC = () => {
       isActive: true,
       createdAt: new Date().toISOString(),
     };
+
+    try {
+      if (profile?.id) {
+        await supabase.from('study_sessions').insert({
+          id: newSession.id,
+          student_id: profile.id,
+          student_name: newSession.studentName,
+          department: newSession.department,
+          subject: newSession.subject,
+          venue: newSession.venue,
+          available_until: newSession.availableUntil,
+          looking_for: newSession.lookingFor,
+          is_active: true,
+        });
+      }
+    } catch (err) {
+      console.warn('Study session persistence notice:', err);
+    }
 
     setActiveSessions([newSession, ...activeSessions]);
     setIsBroadcasting(false);
@@ -139,51 +170,61 @@ export const StudyBuddyRadarView: React.FC = () => {
           Active Sessions on Campus ({activeSessions.length})
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {activeSessions.map((session) => (
-            <div
-              key={session.id}
-              className="soft-card p-5 sm:p-6 space-y-4 border flex flex-col justify-between"
-              style={{ borderColor: 'var(--surface-border)' }}
-            >
-              <div className="space-y-2.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="info">{session.department}</Badge>
-                    <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                      {session.studentName}
-                    </span>
+        {activeSessions.length === 0 ? (
+          <EmptyState
+            icon={BookOpen}
+            title="No Active Study Sessions Right Now"
+            description="Broadcast your study presence at the library or department reading room to let batchmates join you."
+            actionLabel="Broadcast Presence"
+            onAction={() => setIsBroadcasting(true)}
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {activeSessions.map((session) => (
+              <div
+                key={session.id}
+                className="soft-card p-5 sm:p-6 space-y-4 border flex flex-col justify-between"
+                style={{ borderColor: 'var(--surface-border)' }}
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="info">{session.department}</Badge>
+                      <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                        {session.studentName}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-mono">
+                      <Clock className="w-3.5 h-3.5" />
+                      Until {new Date(session.availableUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-mono">
-                    <Clock className="w-3.5 h-3.5" />
-                    Until {new Date(session.availableUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
+
+                  <h3 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+                    {session.subject}
+                  </h3>
+
+                  <p className="text-xs flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                    <MapPin className="w-3.5 h-3.5 text-primary-500" />
+                    {session.venue}
+                  </p>
+
+                  {session.lookingFor && (
+                    <p className="text-xs leading-relaxed italic p-2.5 rounded-lg bg-slate-800/60" style={{ color: 'var(--text-secondary)' }}>
+                      "{session.lookingFor}"
+                    </p>
+                  )}
                 </div>
 
-                <h3 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
-                  {session.subject}
-                </h3>
-
-                <p className="text-xs flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
-                  <MapPin className="w-3.5 h-3.5 text-primary-500" />
-                  {session.venue}
-                </p>
-
-                {session.lookingFor && (
-                  <p className="text-xs leading-relaxed italic p-2.5 rounded-lg bg-slate-800/60" style={{ color: 'var(--text-secondary)' }}>
-                    "{session.lookingFor}"
-                  </p>
-                )}
+                <div className="pt-2 border-t flex justify-end" style={{ borderColor: 'var(--surface-border)' }}>
+                  <Button size="sm" variant="secondary" onClick={() => (window.location.href = '/chat')}>
+                    Join Study Table
+                  </Button>
+                </div>
               </div>
-
-              <div className="pt-2 border-t flex justify-end" style={{ borderColor: 'var(--surface-border)' }}>
-                <Button size="sm" variant="secondary" onClick={() => (window.location.href = '/chat')}>
-                  Join Study Table
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

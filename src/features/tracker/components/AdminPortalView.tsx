@@ -3,6 +3,7 @@ import { useCampusStore } from '@/services/api/dataStore';
 import { StatusBadge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import { Toast, ToastProps } from '@/shared/ui/Toast';
+import { supabase } from '@/shared/lib/supabase';
 import {
   ShieldAlert,
   CheckCircle2,
@@ -31,29 +32,28 @@ export const AdminPortalView: React.FC = () => {
   const approvedCount = applications.filter((a) => a.status === 'Approved').length;
   const rejectedCount = applications.filter((a) => a.status === 'Rejected').length;
 
-  const handleUpdateStatus = (appId: string, title: string, newStatus: ApplicationStatus) => {
-    // Optimistically update status in memory and localStorage
-    const saved = localStorage.getItem('campusos_submitted_applications');
-    if (saved) {
-      try {
-        const apps = JSON.parse(saved);
-        const updated = apps.map((a: any) =>
-          a.id === appId ? { ...a, status: newStatus } : a
-        );
-        localStorage.setItem('campusos_submitted_applications', JSON.stringify(updated));
-        // Force refresh local store
-        useCampusStore.setState({ applications: updated });
+  const handleUpdateStatus = async (appId: string, title: string, newStatus: ApplicationStatus) => {
+    // 1. Optimistically update local application roster
+    const updated = applications.map((a) => (a.id === appId ? { ...a, status: newStatus } : a));
+    useCampusStore.setState({ applications: updated });
+    localStorage.setItem('campusos_submitted_applications', JSON.stringify(updated));
 
-        // Record immutable audit event for administrative endorsement
-        recordAuditLog(
-          newStatus === 'Approved' ? 'APPLICATION_APPROVED' : 'APPLICATION_REJECTED',
-          'document_application',
-          appId,
-          { title, newStatus }
-        );
-      } catch (e) {
-        console.warn('Status update note:', e);
-      }
+    // 2. Record immutable audit event for administrative endorsement
+    recordAuditLog(
+      newStatus === 'Approved' ? 'APPLICATION_APPROVED' : 'APPLICATION_REJECTED',
+      'document_application',
+      appId,
+      { title, newStatus }
+    );
+
+    // 3. Persist to Supabase backend
+    try {
+      await supabase
+        .from('document_applications')
+        .update({ status: newStatus })
+        .eq('id', appId);
+    } catch (e) {
+      console.warn('Status update Supabase persistence note:', e);
     }
 
     setToast({

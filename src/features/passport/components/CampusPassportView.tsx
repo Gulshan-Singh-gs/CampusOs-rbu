@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSessionStore } from '@/services/session/sessionStore';
+import { supabase } from '@/shared/lib/supabase';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { EmptyState } from '@/shared/ui/EmptyState';
 import {
   ShieldCheck,
   Award,
@@ -10,66 +12,129 @@ import {
   Share2,
   ThumbsUp,
   GraduationCap,
+  Plus,
 } from 'lucide-react';
 import type { StudentSkill, StudentAchievement } from '@/shared/types/app.types';
 
 export const CampusPassportView: React.FC = () => {
   const { profile } = useSessionStore();
   const [copied, setCopied] = useState(false);
+  const [skills, setSkills] = useState<StudentSkill[]>([]);
+  const [achievements, setAchievements] = useState<StudentAchievement[]>([]);
+  const [newSkillName, setNewSkillName] = useState('');
+  const [isAddingSkill, setIsAddingSkill] = useState(false);
 
-  // Fallback demo/initial data for verified skills and achievements
-  const [skills, setSkills] = useState<StudentSkill[]>([
-    {
-      id: '1',
-      studentId: profile?.id || 'demo',
-      skillId: 's1',
-      skillName: 'React & TypeScript',
-      proficiencyLevel: 'Advanced',
-      endorsementCount: 8,
-    },
-    {
-      id: '2',
-      studentId: profile?.id || 'demo',
-      skillId: 's2',
-      skillName: 'Cloud & System Design',
-      proficiencyLevel: 'Intermediate',
-      endorsementCount: 5,
-    },
-    {
-      id: '3',
-      studentId: profile?.id || 'demo',
-      skillId: 's3',
-      skillName: 'UI/UX Design',
-      proficiencyLevel: 'Expert',
-      endorsementCount: 12,
-    },
-  ]);
+  useEffect(() => {
+    async function loadPassportData() {
+      if (!profile?.id) return;
+      try {
+        const { data: remoteSkills } = await supabase
+          .from('student_skills')
+          .select('id, student_id, skill_id, proficiency_level, endorsement_count, skills(name)')
+          .eq('student_id', profile.id);
 
-  const achievements: StudentAchievement[] = [
-    {
-      id: 'a1',
-      studentId: profile?.id || 'demo',
-      title: 'Hackathon Grand Finalist 2026',
-      issuer: 'RBU ACM Student Chapter',
-      issueDate: '2026-03-15',
-      badgeIcon: 'Trophy',
-      isVerified: true,
-    },
-    {
-      id: 'a2',
-      studentId: profile?.id || 'demo',
-      title: 'Dean’s Honor List — Semester IV',
-      issuer: 'Department of Computer Science',
-      issueDate: '2025-12-10',
-      badgeIcon: 'Award',
-      isVerified: true,
-    },
-  ];
+        if (remoteSkills && remoteSkills.length > 0) {
+          setSkills(
+            remoteSkills.map((s: any) => ({
+              id: s.id,
+              studentId: s.student_id,
+              skillId: s.skill_id,
+              skillName: s.skills?.name || 'Technical Skill',
+              proficiencyLevel: s.proficiency_level,
+              endorsementCount: s.endorsement_count || 0,
+            }))
+          );
+        }
 
-  const handleEndorse = (skillId: string) => {
+        const { data: remoteAchievements } = await supabase
+          .from('student_achievements')
+          .select('*')
+          .eq('student_id', profile.id);
+
+        if (remoteAchievements && remoteAchievements.length > 0) {
+          setAchievements(
+            remoteAchievements.map((a: any) => ({
+              id: a.id,
+              studentId: a.student_id,
+              title: a.title,
+              issuer: a.issuer,
+              issueDate: a.issue_date,
+              badgeIcon: a.badge_icon || 'Award',
+              isVerified: a.is_verified,
+            }))
+          );
+        }
+      } catch (err) {
+        console.warn('Passport sync notice:', err);
+      }
+    }
+
+    loadPassportData();
+  }, [profile?.id]);
+
+  const handleEndorse = async (skillId: string) => {
     setSkills((prev) =>
       prev.map((s) => (s.id === skillId ? { ...s, endorsementCount: s.endorsementCount + 1 } : s))
     );
+    try {
+      if (profile?.id) {
+        await supabase.from('skill_endorsements').insert({
+          student_skill_id: skillId,
+          endorser_id: profile.id,
+        });
+      }
+    } catch (err) {
+      console.warn('Endorsement sync notice:', err);
+    }
+  };
+
+  const handleAddSkill = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSkillName.trim() || !profile?.id) return;
+
+    const trimmed = newSkillName.trim();
+    const tempSkill: StudentSkill = {
+      id: crypto.randomUUID(),
+      studentId: profile.id,
+      skillId: crypto.randomUUID(),
+      skillName: trimmed,
+      proficiencyLevel: 'Intermediate',
+      endorsementCount: 0,
+    };
+
+    setSkills((prev) => [...prev, tempSkill]);
+    setNewSkillName('');
+    setIsAddingSkill(false);
+
+    try {
+      // Find or insert into skills catalog
+      const { data: existingSkill } = await supabase
+        .from('skills')
+        .select('id')
+        .eq('name', trimmed)
+        .maybeSingle();
+
+      let targetSkillId = existingSkill?.id;
+      if (!targetSkillId) {
+        const { data: createdSkill } = await supabase
+          .from('skills')
+          .insert({ name: trimmed, category: 'Engineering' })
+          .select('id')
+          .single();
+        targetSkillId = createdSkill?.id;
+      }
+
+      if (targetSkillId) {
+        await supabase.from('student_skills').insert({
+          student_id: profile.id,
+          skill_id: targetSkillId,
+          proficiency_level: 'Intermediate',
+          endorsement_count: 0,
+        });
+      }
+    } catch (err) {
+      console.warn('Skill persistence notice:', err);
+    }
   };
 
   const handlePrintPdf = () => {
@@ -170,75 +235,117 @@ export const CampusPassportView: React.FC = () => {
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold uppercase tracking-wider text-primary-500 flex items-center gap-1.5">
               <Sparkles className="w-4 h-4" />
-              Verified Skills & Endorsements
+              Verified Skills & Endorsements ({skills.length})
             </h3>
+            <button
+              type="button"
+              onClick={() => setIsAddingSkill(!isAddingSkill)}
+              className="text-xs font-semibold text-primary-500 hover:underline flex items-center gap-1 no-print"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {isAddingSkill ? 'Cancel' : 'Add Skill'}
+            </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {skills.map((skill) => (
-              <div
-                key={skill.id}
-                className="p-3.5 rounded-xl border flex items-center justify-between transition-all"
-                style={{
-                  backgroundColor: 'var(--card-bg)',
-                  borderColor: 'var(--surface-border)',
-                }}
-              >
-                <div>
-                  <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    {skill.skillName}
-                  </div>
-                  <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                    {skill.proficiencyLevel} • {skill.endorsementCount} endorsements
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleEndorse(skill.id)}
-                  title="Endorse this peer skill"
-                  className="p-1.5 rounded-lg hover:bg-primary-500/10 text-primary-500 transition-colors no-print"
+
+          {isAddingSkill && (
+            <form onSubmit={handleAddSkill} className="flex gap-2 pb-2 no-print">
+              <input
+                type="text"
+                placeholder="e.g. Python, Docker, Figma..."
+                value={newSkillName}
+                onChange={(e) => setNewSkillName(e.target.value)}
+                className="flex-1 px-3 py-1.5 rounded-lg text-xs bg-slate-900 border border-slate-700 text-slate-100"
+              />
+              <Button type="submit" size="sm" variant="primary">
+                Add
+              </Button>
+            </form>
+          )}
+
+          {skills.length === 0 ? (
+            <EmptyState
+              icon={Sparkles}
+              title="No Verified Skills Yet"
+              description="Add your core competencies to receive peer endorsements from fellow students and faculty."
+              actionLabel="Add First Skill"
+              onAction={() => setIsAddingSkill(true)}
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {skills.map((skill) => (
+                <div
+                  key={skill.id}
+                  className="p-3.5 rounded-xl border flex items-center justify-between transition-all"
+                  style={{
+                    backgroundColor: 'var(--card-bg)',
+                    borderColor: 'var(--surface-border)',
+                  }}
                 >
-                  <ThumbsUp className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
+                  <div>
+                    <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {skill.skillName}
+                    </div>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                      {skill.proficiencyLevel} • {skill.endorsementCount} endorsements
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleEndorse(skill.id)}
+                    title="Endorse this peer skill"
+                    className="p-1.5 rounded-lg hover:bg-primary-500/10 text-primary-500 transition-colors no-print"
+                  >
+                    <ThumbsUp className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Verified Honors & Achievements */}
         <div className="space-y-4">
           <h3 className="text-xs font-bold uppercase tracking-wider text-primary-500 flex items-center gap-1.5">
             <Award className="w-4 h-4" />
-            University Honors & Verified Credentials
+            University Honors & Verified Credentials ({achievements.length})
           </h3>
-          <div className="space-y-3">
-            {achievements.map((ach) => (
-              <div
-                key={ach.id}
-                className="p-4 rounded-xl border flex items-start gap-3.5"
-                style={{
-                  backgroundColor: 'var(--card-bg)',
-                  borderColor: 'var(--surface-border)',
-                }}
-              >
-                <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-                  <Award className="w-5 h-5" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-                      {ach.title}
-                    </h4>
-                    <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                      {ach.issueDate}
-                    </span>
+          {achievements.length === 0 ? (
+            <EmptyState
+              icon={Award}
+              title="No University Honors Recorded"
+              description="Official credentials, academic awards, and competition victories will appear here upon department verification."
+            />
+          ) : (
+            <div className="space-y-3">
+              {achievements.map((ach) => (
+                <div
+                  key={ach.id}
+                  className="p-4 rounded-xl border flex items-start gap-3.5"
+                  style={{
+                    backgroundColor: 'var(--card-bg)',
+                    borderColor: 'var(--surface-border)',
+                  }}
+                >
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                    <Award className="w-5 h-5" />
                   </div>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                    Issued by: {ach.issuer}
-                  </p>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                        {ach.title}
+                      </h4>
+                      <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                        {ach.issueDate}
+                      </span>
+                    </div>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                      Issued by: {ach.issuer}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Verification footer */}
