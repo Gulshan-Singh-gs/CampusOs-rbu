@@ -41,6 +41,37 @@ export type TargetAuthority =
   | 'Financial Aid Committee'
   | 'Head of Department';
 
+export type UserRole =
+  | 'student'
+  | 'event_organizer'
+  | 'club_admin'
+  | 'teacher'
+  | 'hod'
+  | 'dsw_admin'
+  | 'super_admin';
+
+export interface AuditLog {
+  readonly id: string;
+  readonly actorId: string | null;
+  readonly actorEmail: string | null;
+  readonly action: string;
+  readonly entityType: string;
+  readonly entityId: string | null;
+  readonly metadata: Record<string, unknown>;
+  readonly createdAt: string;
+}
+
+export interface AttendanceTicket {
+  readonly id: string;
+  readonly eventId: string;
+  readonly rsvpId: string;
+  readonly studentId: string;
+  readonly ticketToken: string;
+  readonly isRedeemed: boolean;
+  readonly expiresAt: string;
+  readonly createdAt: string;
+}
+
 // ---- Profile -------------------------------------------------
 
 export interface Profile {
@@ -50,6 +81,8 @@ export interface Profile {
   readonly rollNumber: string;
   readonly department: Department;
   readonly yearOfStudy: number;
+  readonly role?: UserRole;
+  readonly isVerified?: boolean;
   readonly createdAt: string;
 }
 
@@ -59,6 +92,7 @@ export interface CreateProfileInput {
   rollNumber: string;
   department: Department;
   yearOfStudy: number;
+  role?: UserRole;
 }
 
 // ---- Club ----------------------------------------------------

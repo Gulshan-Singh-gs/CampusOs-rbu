@@ -15,6 +15,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { formatIndianDate } from '@/shared/lib/formatters';
 
 export const EventsFeedView: React.FC = () => {
   const navigate = useNavigate();
@@ -209,13 +210,7 @@ export const EventsFeedView: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Calendar className="w-3.5 h-3.5 opacity-60 shrink-0" />
-                        <span>
-                          {new Intl.DateTimeFormat('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          }).format(new Date(ev.eventDate))}
-                        </span>
+                        <span>{formatIndianDate(ev.eventDate)}</span>
                         <span className="opacity-40">•</span>
                         <Clock className="w-3.5 h-3.5 opacity-60 shrink-0" />
                         <span>{ev.eventTime} IST</span>

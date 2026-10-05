@@ -26,6 +26,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     { to: '/clubs', icon: Users2, label: 'Societies' },
     { to: '/wizard', icon: FileSignature, label: 'Document Wizard' },
     { to: '/applications', icon: FileCheck2, label: 'Applications' },
+    { to: '/admin', icon: GraduationCap, label: 'Review Portal' },
   ];
 
   return (

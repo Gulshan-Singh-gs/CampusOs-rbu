@@ -6,6 +6,8 @@ import { Input, Select } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
 import { GraduationCap, ShieldCheck, Check } from 'lucide-react';
 import type { Department } from '@/shared/types/app.types';
+import { ProfileInputSchema } from '@/shared/lib/validation';
+import { recordAuditLog } from '@/services/api/auditService';
 
 export const OnboardingView: React.FC = () => {
   const navigate = useNavigate();
@@ -20,29 +22,31 @@ export const OnboardingView: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const newErrors: Record<string, string> = {};
 
-    if (!fullName.trim() || fullName.trim().length < 2) {
-      newErrors.fullName = 'Full Name must be at least 2 characters';
-    }
-    if (!email.trim() || !email.includes('@')) {
-      newErrors.email = 'Please provide a valid email address';
-    }
-    if (!rollNumber.trim() || rollNumber.trim().length < 6) {
-      newErrors.rollNumber = 'Roll number must be at least 6 alphanumeric characters';
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    setProfile({
+    const result = ProfileInputSchema.safeParse({
       fullName: fullName.trim(),
       email: email.trim().toLowerCase(),
       rollNumber: rollNumber.trim().toUpperCase(),
       department,
       yearOfStudy: Number(yearOfStudy),
+    });
+
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        const path = issue.path[0] as string;
+        fieldErrors[path] = issue.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setProfile(result.data);
+
+    recordAuditLog('PROFILE_UPDATED', 'profile', null, {
+      fullName: result.data.fullName,
+      rollNumber: result.data.rollNumber,
+      department: result.data.department,
     });
 
     navigate('/events');

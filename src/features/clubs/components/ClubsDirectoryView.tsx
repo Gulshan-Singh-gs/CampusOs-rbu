@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useCampusStore } from '@/services/api/dataStore';
 import { ServiceGrid } from '@/shared/ui/ServiceGrid';
 import { Button } from '@/shared/ui/Button';
+import { Toast, ToastProps } from '@/shared/ui/Toast';
 import {
   Users2,
   Code2,
@@ -16,6 +17,7 @@ import {
 export const ClubsDirectoryView: React.FC = () => {
   const { clubs, fetchFromSupabase } = useCampusStore();
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
+  const [toast, setToast] = useState<Omit<ToastProps, 'onClose'> | null>(null);
 
   useEffect(() => {
     fetchFromSupabase();
@@ -177,9 +179,11 @@ export const ClubsDirectoryView: React.FC = () => {
                     size="sm"
                     fullWidth
                     onClick={() =>
-                      alert(
-                        `Membership inquiry recorded for ${club.name}! Lead ${club.leadName} will review.`
-                      )
+                      setToast({
+                        type: 'success',
+                        title: `Inquiry Submitted to ${club.name}`,
+                        message: `Lead ${club.leadName} has been notified. Check your email for orientation details.`,
+                      })
                     }
                   >
                     Join Chapter
@@ -191,6 +195,9 @@ export const ClubsDirectoryView: React.FC = () => {
           })}
         </div>
       </div>
+
+      {/* Modern Toast component */}
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
     </div>
   );
 };

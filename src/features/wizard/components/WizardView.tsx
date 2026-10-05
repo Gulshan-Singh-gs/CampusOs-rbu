@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSessionStore } from '@/services/session/sessionStore';
 import { useCampusStore } from '@/services/api/dataStore';
 import { DEPARTMENTS } from '@/shared/lib/constants';
+import { formatIndianDate } from '@/shared/lib/formatters';
 import { ServiceGrid } from '@/shared/ui/ServiceGrid';
 import { Button } from '@/shared/ui/Button';
 import { Input, Select } from '@/shared/ui/Input';
@@ -130,11 +131,7 @@ export const WizardView: React.FC = () => {
     },
   ];
 
-  const formattedToday = new Intl.DateTimeFormat('en-IN', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date());
+  const formattedToday = formatIndianDate(new Date());
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-10">

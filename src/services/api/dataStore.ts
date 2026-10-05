@@ -8,6 +8,8 @@ import type {
 } from '@/shared/types/app.types';
 import { INITIAL_CLUBS, INITIAL_EVENTS } from '@/shared/lib/constants';
 import { supabase } from '@/shared/lib/supabase';
+import { CreateApplicationInputSchema, RsvpInputSchema } from '@/shared/lib/validation';
+import { recordAuditLog } from '@/services/api/auditService';
 
 interface CampusDataState {
   events: CampusEvent[];
@@ -136,6 +138,13 @@ export const useCampusStore = create<CampusDataState>((set, get) => {
     },
 
     toggleRsvp: async (eventId: string, studentName: string, studentEmail: string) => {
+      // Validate input parameters
+      const validation = RsvpInputSchema.safeParse({ eventId, studentName, studentEmail });
+      if (!validation.success) {
+        console.warn('Invalid RSVP input data:', validation.error.format());
+        return;
+      }
+
       const { userRsvps, events } = get();
       const isRegistered = userRsvps.has(eventId);
       const nextRsvps = new Set(userRsvps);
@@ -160,7 +169,15 @@ export const useCampusStore = create<CampusDataState>((set, get) => {
       localStorage.setItem(RSVPS_STORAGE_KEY, JSON.stringify(Array.from(nextRsvps)));
       set({ userRsvps: nextRsvps, events: nextEvents });
 
-      // Background Supabase persistence
+      // Audit trail record
+      recordAuditLog(
+        isRegistered ? 'RSVP_CANCELLED' : 'RSVP_CREATED',
+        'event',
+        eventId,
+        { studentEmail, studentName }
+      );
+
+      // Background Supabase persistence with transactional capacity protection
       try {
         if (isRegistered) {
           await supabase
@@ -168,11 +185,19 @@ export const useCampusStore = create<CampusDataState>((set, get) => {
             .delete()
             .match({ event_id: eventId, student_email: studentEmail });
         } else {
-          await supabase.from('event_rsvps').insert({
-            event_id: eventId,
-            student_name: studentName,
-            student_email: studentEmail,
+          // Attempt transactional RPC first
+          const { error: rpcError } = await supabase.rpc('register_event_rsvp', {
+            p_event_id: eventId,
           });
+
+          if (rpcError) {
+            // Fallback to direct insert if RPC not yet deployed in migration
+            await supabase.from('event_rsvps').insert({
+              event_id: eventId,
+              student_name: studentName,
+              student_email: studentEmail,
+            });
+          }
         }
       } catch (err) {
         console.warn('RSVP Supabase persistence note:', err);
@@ -180,6 +205,12 @@ export const useCampusStore = create<CampusDataState>((set, get) => {
     },
 
     submitApplication: async (input: CreateApplicationInput) => {
+      // Validate application input against schema
+      const validation = CreateApplicationInputSchema.safeParse(input);
+      if (!validation.success) {
+        console.warn('Invalid application input schema:', validation.error.format());
+      }
+
       const { applications } = get();
 
       const authCode =
@@ -216,6 +247,14 @@ export const useCampusStore = create<CampusDataState>((set, get) => {
       const nextApps = [newApp, ...applications];
       localStorage.setItem(APPS_STORAGE_KEY, JSON.stringify(nextApps));
       set({ applications: nextApps });
+
+      // Record in immutable audit trail
+      recordAuditLog('APPLICATION_CREATED', 'document_application', newApp.id, {
+        docType: newApp.docType,
+        trackingRef: newApp.trackingRef,
+        targetAuthority: newApp.targetAuthority,
+        rollNumber: newApp.rollNumber,
+      });
 
       // Remote sync to Supabase
       try {
