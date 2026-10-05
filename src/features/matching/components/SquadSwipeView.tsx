@@ -164,10 +164,10 @@ export const SquadSwipeView: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('discover')}
-          className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+          className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
             activeTab === 'discover'
-              ? 'bg-primary-500 text-white shadow-md'
-              : 'soft-card text-slate-400 hover:text-slate-200'
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+              : 'bg-white dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white shadow-sm'
           }`}
         >
           Discover Projects
@@ -175,10 +175,10 @@ export const SquadSwipeView: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('create')}
-          className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+          className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
             activeTab === 'create'
-              ? 'bg-primary-500 text-white shadow-md'
-              : 'soft-card text-slate-400 hover:text-slate-200'
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+              : 'bg-white dark:bg-slate-900/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white shadow-sm'
           }`}
         >
           Post Project Pitch

@@ -124,10 +124,10 @@ export const SocialGraphView: React.FC = () => {
         <button
           type="button"
           onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
             filter === 'all'
-              ? 'bg-primary-500/10 text-primary-500'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+              : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/40'
           }`}
         >
           Active Connections ({connections.filter((c) => c.status === 'accepted').length})
@@ -135,10 +135,10 @@ export const SocialGraphView: React.FC = () => {
         <button
           type="button"
           onClick={() => setFilter('pending')}
-          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
             filter === 'pending'
-              ? 'bg-primary-500/10 text-primary-500'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+              : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/40'
           }`}
         >
           Pending Requests ({connections.filter((c) => c.status === 'pending').length})

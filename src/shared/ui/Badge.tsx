@@ -11,23 +11,23 @@ export interface StatusBadgeProps {
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className }) => {
   const config = {
     Approved: {
-      bg: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+      bg: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
       icon: CheckCircle2,
     },
     'Pending Review': {
-      bg: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+      bg: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
       icon: Clock,
     },
     Rejected: {
-      bg: 'bg-red-500/15 text-red-400 border-red-500/30',
+      bg: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
       icon: XCircle,
     },
     Expired: {
-      bg: 'bg-slate-500/15 text-slate-400 border-slate-500/30',
+      bg: 'bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30',
       icon: XCircle,
     },
     Draft: {
-      bg: 'bg-slate-500/15 text-slate-400 border-slate-500/30',
+      bg: 'bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30',
       icon: FileEdit,
     },
   }[status];
@@ -60,11 +60,11 @@ export const Badge: React.FC<GenericBadgeProps> = ({
   className,
 }) => {
   const styles = {
-    default: 'bg-slate-700/50 text-slate-200 border-slate-600/50',
-    success: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-    warning: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-    info: 'bg-primary-500/15 text-primary-400 border-primary-500/30',
-    danger: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
+    default: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700',
+    success: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+    warning: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+    info: 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30',
+    danger: 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30',
   }[variant];
 
   return (
