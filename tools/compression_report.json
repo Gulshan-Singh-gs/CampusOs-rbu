@@ -1,0 +1,68 @@
+{
+  "original": {
+    "characters": 334310,
+    "words": 40757,
+    "lines": 7096
+  },
+  "compressed": {
+    "characters": 245754,
+    "words": 32523,
+    "lines": 5365
+  },
+  "compression": {
+    "character_reduction": 26.49,
+    "word_reduction": 20.2
+  },
+  "semantic_integrity": {
+    "original_markers": {
+      "must": 43,
+      "do_not": 9,
+      "architecture": 102,
+      "registry": 30,
+      "sdk": 4,
+      "execution": 5,
+      "workspace": 2,
+      "workflow": 3,
+      "bridge": 0,
+      "security": 43,
+      "privacy": 0,
+      "performance": 7,
+      "reliability": 2,
+      "versioning": 3,
+      "accessibility": 5,
+      "i18n": 0,
+      "testing": 62,
+      "seo": 1,
+      "aeo": 0,
+      "geo": 0,
+      "success": 0,
+      "phases": 2
+    },
+    "compressed_markers": {
+      "must": 33,
+      "do_not": 2,
+      "architecture": 70,
+      "registry": 18,
+      "sdk": 4,
+      "execution": 5,
+      "workspace": 2,
+      "workflow": 3,
+      "bridge": 0,
+      "security": 25,
+      "privacy": 0,
+      "performance": 6,
+      "reliability": 2,
+      "versioning": 3,
+      "accessibility": 5,
+      "i18n": 0,
+      "testing": 51,
+      "seo": 1,
+      "aeo": 0,
+      "geo": 0,
+      "success": 0,
+      "phases": 2
+    },
+    "missing_categories": {}
+  },
+  "warning": "This is a conservative syntactic/semantic-preserving compression heuristic. It cannot mathematically guarantee zero semantic loss."
+}
