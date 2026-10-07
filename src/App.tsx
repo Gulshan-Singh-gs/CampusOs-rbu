@@ -88,7 +88,15 @@ export const App: React.FC = () => {
               <Route path="/clubs" element={<ClubsDirectoryView />} />
 
               {/* Verified Identity & Social Graph */}
-              <Route path="/passport" element={<CampusPassportView />} />
+              <Route
+                path="/passport"
+                element={
+                  <RequireAuth>
+                    <CampusPassportView />
+                  </RequireAuth>
+                }
+              />
+              <Route path="/passport/:uid" element={<CampusPassportView />} />
               <Route path="/peers" element={<SocialGraphView />} />
               <Route path="/squad" element={<SquadSwipeView />} />
               <Route path="/chat" element={<EphemeralChatView />} />

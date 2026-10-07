@@ -1,0 +1,813 @@
+Campus Passport & Digital Resume: Comprehensive UX/UI Audit, Workflow Analysis, and Redesign Blueprint
+
+Target URL: https://campusos-rbu-owv.pages.dev/passport
+
+Evaluation Role: Senior Professional UI/UX Systems & Interaction Engineer
+
+Date of Audit: October 07, 2026
+
+Document Status: Complete Deliverable Package (Phases 01 – 18)
+
+Deliverable Index
+
+01. Evidence Inventory
+
+02. UX Discovery
+
+03. Current-State User Journey Maps
+
+04. UX Heuristic Evaluation (Nielsen Norman Framework)
+
+05. Comprehensive UI Audit
+
+06. Content Design & Microcopy Review
+
+07. Trust, Privacy, and Credibility Analysis
+
+08. Accessibility (a11y) & Inclusive Design Review
+
+09. End-to-End Workflow Analysis
+
+10. Information Architecture (IA) Redesign
+
+11. UX Redesign Direction & Structural Wireframes
+
+12. UI Component Specifications
+
+13. Interaction and State Design System
+
+14. Visual Design Direction & Design Tokens
+
+15. Inclusive Design & Accessibility Specification
+
+16. Usability Validation & Testing Plan
+
+17. Prioritized Implementation Backlog (P0–P3)
+
+18. Final Executive UX/UI Report
+
+01. Evidence Inventory (01_evidence_inventory.md)
+
+1.1 Source & Access Documentation
+
+Target URL: https://campusos-rbu-owv.pages.dev/passport
+
+Hosting Environment: Cloudflare Pages free tier (*.pages.dev subdomain).
+
+Access Control: Fully open/unauthenticated. Navigation directly returns HTTP 200 with raw DOM rendered immediately.
+
+Authentication Boundary: None detected. No HTTP session cookies, bearer tokens, or login prompts are requested or enforced.
+
+1.2 Layout & Sectional Hierarchy
+
+Header & Document Title:
+
+Text: "Campus Passport & Digital Resume"
+
+Subtitle: "Cryptographically verifiable university profile and academic resume"
+
+Student Identity Header Block:
+
+Student Legal Name (PII displayed unconditionally).
+
+Status Tag: "Verified Student" (Pill badge styling).
+
+Academic Program & Cohort: "Computer Science & Engineering • Year 3".
+
+University Identification Number (UID): RBU21CSE*** (Exposed raw numeric roll identifier).
+
+Institutional Affiliation: "Rayat Bahra University".
+
+Academic & Institutional Status Summary Grid:
+
+Metric Card A: "Institutional Status" displaying "In Good Standing".
+
+Metric Card B: "Attendance" displaying "92%".
+
+Metric Card C: "GPA" displaying "8.8 / 10".
+
+Narrative Bio:
+
+Section Header: "About & Academic Focus".
+
+Content: A single unstructured prose block highlighting technical domains and career interests.
+
+Competency Section (Empty State):
+
+Section Header: "Verified Skills & Endorsements".
+
+Primary Button: Add Skill.
+
+Container Content: "No Verified Skills Yet".
+
+Subtext: "Add your core competencies to receive peer endorsements from fellow students and faculty."
+
+Secondary Empty-State Button: Add First Skill.
+
+Credentials Section (Empty State):
+
+Section Header: "University Honors & Verified Credentials".
+
+Container Content: "No University Honors Recorded".
+
+Subtext: "Official credentials, academic awards, and competition victories will appear here upon department verification."
+
+Footer / Verification Assertion:
+
+Claim: "Authenticated via Rayat Bahra University CampusOS Zero-Trust Identity".
+
+Static String: "Document Hash: SHA256-RBU-PASSPORT-2026".
+
+1.3 Interaction & Technical Observations
+
+Interactive Affordance Test: Clicking on either Add Skill or Add First Skill produces zero feedback. No modal opens, no inline form mounts, no route transition occurs, and no network requests are emitted.
+
+Data Flow Architecture: The document functions as a static client-side artifact. Content is hydrated from compiled JS bundles or a static data payload without active session validation.
+
+Form & Input Elements: Zero form elements (<input>, <textarea>, <select>) exist on the page.
+
+02. UX Discovery (02_ux_discovery.md)
+
+2.1 Product Positioning Conflict
+
+The product suffers from an acute identity crisis, attempting to occupy four divergent mental models simultaneously:
+
+Identity Credential / Campus ID Card: Prominently displays official badges, student photo placeholders, and registration numbers.
+
+Official Academic Transcript: Exposes institutional metrics (GPA, attendance, standing).
+
+Self-Authored Professional Resume / Portfolio: Hosts personal bios and interactive skill-building features.
+
+Web3 / Cryptographic Attestation Document: Features cryptographic hashes and zero-trust verification claims.
+
+2.2 User Groups & JTBD Framework
+
+┌────────────────────────────────────────────────────────────────────────┐
+│                        USER PERSONAS & GOALS                           │
+├────────────────────┬────────────────────┬──────────────────────────────┤
+│ Student Owner      │ Recruiter          │ Faculty Verifier             │
+│ Wants to showcase  │ Wants fast, trusted│ Wants clean governance &     │
+│ achievements safely│ academic proof     │ streamlined review queue     │
+└────────────────────┴────────────────────┴──────────────────────────────┘
+
+
+
+A. Student Owner (Profile Subject)
+
+Core Job to Be Done: "When I share my university credentials with prospective employers, I want to prove my academic standing and skills are verified by my institution, so that I can secure internships without exposing myself to identity theft or grade stalking."
+
+Primary Anxiety: Loss of control over sensitive academic records (GPA, registration number) published publicly on a non-university domain.
+
+B. Recruiter / Hiring Manager
+
+Core Job to Be Done: "When evaluating a student applicant, I want an unambiguous, tamper-evident signal that their enrollment, GPA, and skills are certified by their university, so that I can make hiring decisions without manual background checks."
+
+Primary Anxiety: Detecting student-authored fraud or unverified academic claims masked behind technical jargon.
+
+C. Faculty / Department Verifier
+
+Core Job to Be Done: "When endorsing student capstone projects and academic honors, I want an authenticated review portal, so that departmental recognition carries institutional legitimacy."
+
+Primary Anxiety: Administrative liability, unauthorized issuance of university honors, and lack of an official audit log.
+
+D. Anonymous / Casual Visitor
+
+Core Job to Be Done: "When opening this link, I want to understand what organization produced it and why I have access, so that I can assess whether it is legitimate."
+
+Primary Anxiety: Suspecting phishing, malware, or an accidental data breach.
+
+2.3 Expectation vs. Reality Gap
+
+|
+
+| Concept Claimed | User Mental Model / Expectation | Observable Reality |
+| "Campus Passport" | An official credential wallet issued by an accredited institution. | A single static web page hosted on a free third-party subdomain (*.pages.dev). |
+| "Verified Student" | Real-time active enrollment validation backed by registrar records. | A static CSS badge with no issuing timestamp, expiry date, or registrar signature. |
+| "Verified Skills" | Competencies backed by grades, proctored assessments, or faculty sign-offs. | Completely empty state with inoperable buttons. |
+| "Zero-Trust Identity" | Strict least-privilege access requiring multi-factor authentication. | Public, unauthenticated, link-accessible PII viewable by search engine crawlers. |
+| "Document Hash" | Cryptographic proof verifiable against a public university ledger. | A static, non-functional text string (SHA256-RBU-PASSPORT-2026). |
+
+03. Current-State User Journey Maps (03_user_journey_maps.md)
+
+3.1 Anonymous Visitor Journey
+
+Stage 1: Arrival: Follows a link. Page loads immediately.
+
+Thought: "What is CampusOS? Whose page is this?"
+
+Emotion: Neutral $ ightarrow$ Bewildered.
+
+Stage 2: Scanning Header: Observes full student name, university name, and UID.
+
+Thought: "Why am I seeing this student's full university roll number without logging in?"
+
+Emotion: Concerned.
+
+Stage 3: Reviewing Metrics: Reads GPA: 8.8 and Attendance: 92%.
+
+Thought: "Is this a public leak of a student's grades?"
+
+Emotion: Skeptical.
+
+Stage 4: Interacting: Taps Add Skill. Nothing happens.
+
+Thought: "The site is broken."
+
+Emotion: Annoyed.
+
+Stage 5: Terminal State: Reads "Zero-Trust Identity" and pseudo-hash in footer. Exits tab.
+
+3.2 Student Owner Journey
+
+Stage 1: Onboarding / Access: Opens own passport page.
+
+Thought: "Here is my profile. Am I logged in? How does the site know who I am?"
+
+Emotion: Confused.
+
+Stage 2: Action Attempt: Desires to populate the empty skills container; clicks Add Skill.
+
+System Response: Nil. Zero visual feedback.
+
+Thought: "Why won't it let me add my skills? Is there a form I missed?"
+
+Emotion: Frustrated.
+
+Stage 3: Privacy Realization: Realizes there is no settings menu, no password, and no toggle to hide GPA.
+
+Thought: "If I send this to a company, anyone who gets the link sees my exact grades and roll number forever."
+
+Emotion: Alarmed, reluctant to share.
+
+3.3 Recruiter Journey
+
+Stage 1: Ingestion: Receives URL in candidate application.
+
+Stage 2: Legitimacy Assessment: Inspects domain name (campusos-rbu-owv.pages.dev).
+
+Thought: "This is a free Cloudflare Pages deployment, not an official .edu or .ac.in domain."
+
+Emotion: High skepticism.
+
+Stage 3: Verification Audit: Attempts to verify the 8.8 GPA and "Verified Student" claim. Searches for a registrar verification link, QR code, or public key signature. Finds only the static string SHA256-RBU-PASSPORT-2026.
+
+Stage 4: Hiring Decision: Cannot accept uncertified self-hosted web pages as proof of academic standing. Requests official scanned paper transcript.
+
+04. UX Heuristic Evaluation (04_heuristic_evaluation.md)
+
+┌────────────────────────────────────────────────────────────────────────┐
+│                      HEURISTIC SEVERITY SUMMARY                        │
+├─────────────────┬─────────────────┬──────────────────┬─────────────────┤
+│ P0 (Critical): 4│ P1 (High): 3    │ P2 (Medium): 2   │ P3 (Low): 1     │
+└─────────────────┴─────────────────┴──────────────────┴─────────────────┘
+
+
+
+H1: Visibility of System Status
+
+Finding: The page lacks session status, synchronization timestamps, viewer role indicators, and interactive feedback.
+
+User Impact: Users cannot determine whether they are viewing a draft, a live record, or a cached preview.
+
+Severity: P1 (High)
+
+Recommendation: Introduce a status banner: "Viewing as Guest • Read-Only • Last verified by RBU Registrar: Oct 5, 2026".
+
+H2: Match Between System and Real World
+
+Finding: Heavy reliance on engineering buzzwords ("Zero-Trust Identity", "Document Hash") that do not correspond to user tasks.
+
+User Impact: Obscures actionable information behind technical jargon.
+
+Severity: P2 (Medium)
+
+Recommendation: Replace technical assertions with plain-language assurances: "Officially Issued Transcript", "Cryptographically Signed Document".
+
+H3: User Control and Freedom
+
+Finding: Complete absence of privacy toggles, edit capabilities, share configurations, or account preferences.
+
+User Impact: Students are trapped with an immutable, public profile that exposes private records.
+
+Severity: P0 (Critical)
+
+Recommendation: Implement a Student Management Portal with visibility checkboxes ([ ] Display GPA on Public Profile).
+
+H4: Consistency and Standards
+
+Finding: Buttons (Add Skill, Add First Skill) adopt primary CTA visual styling but execute no function.
+
+User Impact: Destroys user trust in interface affordances.
+
+Severity: P0 (Critical)
+
+Recommendation: Remove non-functional buttons from public view; render them only for authenticated profile owners inside an active edit session.
+
+H5: Error Prevention
+
+Finding: Sensitive academic data is published to the public internet without explicit confirmation or access gates.
+
+User Impact: Severe exposure of student educational records.
+
+Severity: P0 (Critical)
+
+Recommendation: Restrict full profile access behind role-based authentication or scoped access tokens.
+
+H6: Recognition Rather Than Recall
+
+Finding: Alphanumeric UID (RBU21CSE***) requires external institutional knowledge to decode.
+
+User Impact: External recruiters cannot deduce program, degree level, or cohort year from the raw string.
+
+Severity: P2 (Medium)
+
+Recommendation: Expand institutional codes into natural language labels: "Roll No. 045 • B.Tech Computer Science & Engineering (Class of 2025)".
+
+H7: Flexibility and Efficiency of Use
+
+Finding: No export features (Download PDF, Verified Credential JSON, Print View).
+
+User Impact: Users cannot easily attach credentials to job application portals.
+
+Severity: P1 (High)
+
+Recommendation: Add a "Download Official Summary (Signed PDF)" export function.
+
+H8: Aesthetic and Minimalist Design
+
+Finding: Decorative cryptographic pseudo-strings clutter the footer without delivering user utility.
+
+User Impact: Visual noise that dilutes genuine institutional branding.
+
+Severity: P3 (Low)
+
+Recommendation: Collapse technical metadata into a collapsible "Verification Details" drawer.
+
+H9: Help Users Recognize, Diagnose, and Recover from Errors
+
+Finding: Failed interactions (dead buttons) trigger zero visual cues, error dialogs, or fallback states.
+
+User Impact: Users assume system crash or device failure.
+
+Severity: P0 (Critical)
+
+Recommendation: Provide clear inline error and empty-state messaging for any offline or pending feature.
+
+H10: Help and Documentation
+
+Finding: Zero documentation, FAQs, or contact info regarding how credentials are issued, corrected, or verified.
+
+User Impact: Users with data errors have no remediation path.
+
+Severity: P1 (High)
+
+Recommendation: Include an accessible footer help link: "Dispute or verify this record with the Academic Registrar".
+
+05. Comprehensive UI Audit (05_ui_audit.md)
+
+5.1 Visual Hierarchy & Spatial Grid
+
+Page Grid: The layout uses a centered single-column container (max-width ~768px on desktop). While focused, it compresses high-density academic data into vertical ribbons.
+
+Spacing Scale: Inconsistent padding scales across cards (e.g., 24px on the identity card vs. 12px on inner metric cards), creating an unbalanced visual cadence.
+
+Visual Anchors: The student's name competes directly with the page title for primary optical weight.
+
+5.2 Typography System
+
+Font Stack: Standard system sans-serif font stack. Clean and readable, but lacks institutional dignity and academic distinction.
+
+Typographic Scale:
+
+H1 (Page Title): ~24px / Semi-Bold
+
+H2 (Section Titles): ~18px / Medium
+
+Metrics (GPA/Attendance): ~28px / Bold
+
+Captions & Footers: ~11px–12px / Regular
+
+Hierarchy Flaw: Metric numerical values (8.8, 92%) dominate visually without adequate contextual labeling, causing scanning eyes to see raw numbers before understanding their meaning.
+
+5.3 Color Palette & Semantic Tokens
+
+Primary Surface: Crisp white (#FFFFFF) with light gray canvas (#F9FAFB).
+
+Border Strokes: Muted gray (#E5E7EB).
+
+Semantic Status Colors:
+
+"Verified Student": Emerald green pill (#DEF7EC bg, #03543F text). Strong contrast and appropriate semantic coloring.
+
+"In Good Standing": Indigo/blue text badge.
+
+Contrast Vulnerability: Muted captions in the footer (#9CA3AF) on light gray backgrounds fail the WCAG 2.1 AA 4.5:1 minimum contrast ratio for normal text (achieving only ~2.8:1).
+
+5.4 Component Audit & State Matrix
+
+| Component | Intended Purpose | Observable Defect | Visual Remediation |
+| Profile Card | Anchor student identity | Unauthenticated exposure of student UID. | Hide UID behind authenticated view or mask as RBU21***. |
+| Status Cards | Communicate academic standing | Metrics lack visual indicators of scale or reference ranges. | Add progress indicators and cohort ranking benchmarks. |
+| Skill Container | Display endorsed competencies | Empty state communicates deficiency rather than pending status. | Implement guided setup wizard or hide from public recruiters until verified. |
+| Add Skill CTA | Trigger data entry modal | Inoperable, no hover/focus states, dead button. | Remove from public view; render only in authenticated student portal. |
+| Document Hash | Provide cryptographic validation | Static plain-text string, breaks visually on mobile viewports. | Monospace badge with "Click to Verify Signature" action. |
+
+06. Content Design & Microcopy Review (06_content_design_review.md)
+
+┌────────────────────────────────────────────────────────────────────────┐
+│                      CONTENT REWRITE COMPARISON                        │
+├───────────────────────────────────┬────────────────────────────────────┤
+│ Current Vague / Jargon Copy       │ User-Centered Recommended Rewrite  │
+├───────────────────────────────────┼────────────────────────────────────┤
+│ "Campus Passport & Digital Resume"│ "Verified Academic Credential &    │
+│                                   │ Portfolio"                         │
+│ "Authenticated via Zero-Trust"    │ "Digitally Certified by University │
+│                                   │ Registrar"                         │
+│ "SHA256-RBU-PASSPORT-2026"        │ "Cryptographic Signature Verified" │
+└───────────────────────────────────┴────────────────────────────────────┘
+
+
+
+Detailed Microcopy Audit & Rewrites
+
+| Component / Label | Current User-Facing Copy | Problem / User Risk | Recommended Plain-Language Rewrite |
+| Page Title | Campus Passport & Digital Resume | Blurs the line between official transcript and informal resume. | Verified Academic Credential & Portfolio |
+| Tagline | Cryptographically verifiable university profile and academic resume | Jargon-heavy; fails to explain practical utility to recruiters. | Official academic standing and certified competencies issued by Rayat Bahra University. |
+| Identity Tag | Verified Student | Vague; does not specify who verified it or when. | Enrolled Student • Verified by Registrar (Active: Fall 2026) |
+| Academic Standing | Institutional Status: In Good Standing | Fails to define institutional criteria for "Good Standing". | Academic Standing: Active (Meets all degree & conduct standards) |
+| Metrics: GPA | GPA: 8.8 / 10 | Unclear grading system context for foreign recruiters. | Cumulative GPA: 8.8 / 10.0 (First Class with Distinction) |
+| Metrics: Attendance | Attendance: 92% | Irrelevant to corporate employers; feels like a secondary school metric. | Class & Lab Attendance: 92% (Exceeds 75% University Requirement) |
+| Skills Title | Verified Skills & Endorsements | Claims verification before any skills exist. | Curricular Competencies & Endorsements |
+| Skills Empty State | No Verified Skills Yet. Add your core competencies to receive peer endorsements... | Puts burden on student; implies candidate is unqualified. | No competencies published yet. Course-verified proficiencies will appear after departmental review. |
+| Honors Empty State | No University Honors Recorded | Sounds punitive or disappointing. | No institutional honors recorded for the current evaluation period. |
+| Footer Trust Claim | Authenticated via Rayat Bahra University CampusOS Zero-Trust Identity | High-friction engineering jargon; unsupported by evidence. | Official Student Credential • Issued by Office of the Registrar, Rayat Bahra University |
+| Integrity String | Document Hash: SHA256-RBU-PASSPORT-2026 | Appears fraudulent to technical recruiters; unreadable to non-technical users. | Digital Certificate ID: RBU-2026-045 • 
+
+$$Verify Public Signature$$
+
+ |
+
+07. Trust, Privacy, and Credibility Analysis (07_trust_privacy_review.md)
+
+7.1 Trust & Institutional Legitimacy
+
+Hosting Credibility: The URL campusos-rbu-owv.pages.dev signals an unverified hobbyist deployment or student capstone project. Authentic academic platforms operate under institutional domains (e.g., credentials.rayatbahrauniversity.edu.in).
+
+Visual Authority: The absence of verified institutional contact details, registrar seals, and accreditation notices creates skepticism.
+
+The "Security Theater" Paradox: Incorporating unverified technical assertions like "Zero-Trust Identity" and pseudo-hashes produces the opposite of trust: technical reviewers recognize the claims as unbacked, while non-technical users find them alienating.
+
+7.2 Student Privacy & Regulatory Exposure
+
+Unprotected Academic Records: Public exposure of GPA, attendance percentages, and internal registration IDs violates core student privacy expectations (aligned with global standards such as FERPA, GDPR, and India's Digital Personal Data Protection Act).
+
+Identity Harvesting: An exposed student UID coupled with legal name and program details provides sufficient data for social engineering or fraudulent student portal access.
+
+Consent Deficit: There is no indication that the student consented to public indexation of their academic record.
+
+7.3 Multi-Variable Risk Matrix
+
+| Risk Factor | Affected Stakeholder | Impact Level | Likelihood | Mitigation Strategy |
+| Student Data Exposure | Student Owner | Critical (P0) | High (Live) | Require authentication; redact GPA and UID on unauthenticated views. |
+| Institutional Brand Damage | University | High (P1) | High (Live) | De-escalate security claims; migrate to institutional domain. |
+| Recruiter Distrust / Discard | Student Applicant | High (P1) | High (Live) | Replace hardcoded text with verifiable digital signature certificates. |
+| Inoperable Interaction | All Users | Medium (P2) | Certain (100%) | Remove non-functional action triggers from public view. |
+
+08. Accessibility (a11y) & Inclusive Design Review (08_accessibility_review.md)
+
+┌────────────────────────────────────────────────────────────────────────┐
+│                        ACCESSIBILITY SUMMARY                           │
+├─────────────────┬─────────────────┬──────────────────┬─────────────────┤
+│ WCAG Principle  │ Status          │ Key Violation    │ Impact          │
+├─────────────────┼─────────────────┼──────────────────┼─────────────────┤
+│ Perceivable     │ Partial Fail    │ Low contrast     │ Muted captions  │
+│ Operable        │ Fail            │ Dead tab stops   │ Keyboard trap   │
+│ Understandable  │ Fail            │ Unexplained text │ Cognitive load  │
+│ Robust          │ Partial Fail    │ Missing ARIA     │ Screen readers  │
+└─────────────────┴─────────────────┴──────────────────┴─────────────────┘
+
+
+
+8.1 Detailed WCAG 2.1 Audit Findings
+
+WCAG 1.4.3 Contrast (Minimum):
+
+Issue: Subtitle captions (#9CA3AF) against card background (#FFFFFF) yield a 2.8:1 contrast ratio.
+
+User Impact: Low-vision and aging users cannot read verification and timestamp metadata.
+
+Remediation: Shift secondary text tokens to #4B5563 (7.0:1 contrast ratio).
+
+WCAG 2.1.1 Keyboard Navigation:
+
+Issue: The Add Skill element receives tab focus, but activating it with Enter or Space triggers no event or focus transfer.
+
+User Impact: Motor-impaired users navigating via switch devices or keyboards encounter a dead-end affordance.
+
+WCAG 2.4.4 Link Purpose (In Context):
+
+Issue: The document hash string has no accessible description or context explaining its function.
+
+User Impact: Screen readers announce a confusing 28-character alphanumeric string without indicating its purpose.
+
+WCAG 3.1.2 Language of Parts:
+
+Issue: Technical acronyms ("UID", "GPA", "SHA256") lack <abbr> wrappers or semantic expansion.
+
+WCAG 4.1.2 Name, Role, Value:
+
+Issue: Custom status indicators (pills) rely on <div> tags lacking role="status" or aria-label declarations.
+
+09. End-to-End Workflow Analysis (09_workflow_analysis.md)
+
+9.1 The Current Broken Experience
+
+[ Visitor / Recruiter ] ──> [ Opens URL ] ──> [ Views Unprotected PII ] ──> [ Clicks 'Add Skill' ] ──> [ Complete Dead End ]
+                                                                                      │
+                                                                                      ▼
+                                                                             (No Network Request,
+                                                                              No Modal, No State)
+
+
+
+9.2 The Desired Production Workflow
+
+[ User Lands on /passport ]
+           │
+           ├────────────────────────┬────────────────────────┐
+           ▼                        ▼                        ▼
+   [ Authenticated Student ] [ Verified Recruiter ]    [ Anonymous Guest ]
+           │                        │                        │
+   ┌───────┴───────┐        ┌───────┴───────┐        ┌───────┴───────┐
+   │ Full Edit Mode│        │ Verified View │        │ Redacted View │
+   │ • Add Skills  │        │ • GPA Shown   │        │ • GPA Masked  │
+   │ • Privacy Tgl │        │ • Cert Valid  │        │ • UID Masked  │
+   │ • Share Token │        │ • Download PDF│        │ • Login Prompt│
+   └───────────────┘        └───────────────┘        └───────────────┘
+
+
+
+9.3 Detailed Lifecycle Workflows
+
+Workflow A: Skill Ingestion & Faculty Endorsement
+
+Submission: Student authenticates $ightarrow$ selects accredited course competency (e.g., "Distributed Systems") $ightarrow$ attaches repository URL/capstone project evidence $ightarrow$ submits.
+
+Verification Queue: Faculty advisor receives notification in administrative dashboard $ightarrow$ inspects project evidence $ightarrow$ clicks Approve Endorsement.
+
+Publication: Skill updates on public passport with status: "Verified by Prof. Sharma (Computer Science Dept) • Oct 2026".
+
+Workflow B: Recruiter Verification & Audit Trail
+
+Access: Recruiter opens student passport via secure share link (with embedded access token).
+
+Cryptographic Validation: Recruiter clicks Verify Institutional Signature.
+
+Validation Modal: System executes public key validation against Rayat Bahra University's public ledger $ightarrow$ renders modal confirming certificate validity, signing authority, and hash integrity.
+
+10. Information Architecture (IA) Redesign (10_information_architecture.md)
+
+                                  CAMPUS PASSPORT IA
+                                          │
+    ┌──────────────────┬──────────────────┼──────────────────┬──────────────────┐
+    ▼                  ▼                  ▼                  ▼                  ▼
+[ Global Header ] [ Identity Card ]  [ Academic Block ] [ Credentials ]   [ Governance ]
+  • Institution     • Legal Name       • Standing         • Verified        • Digital Sign.
+  • Auth Status     • Program & Year   • GPA (Scoped)       Skills          • Verification
+  • Role Indicator  • Masked UID       • Attendance       • Honors            Log
+  • Share CTA       • Verification     • Registrar Sync   • Project Links   • Privacy Policy
+                      Badge
+
+
+
+Role-Based Content Matrix
+
+| Section / Data Point | Student Owner (Authenticated) | Recruiter (Tokenized Link) | Public / Anonymous Visitor |
+| Legal Name & Photo | Editable / Full View | Full View | Full View |
+| University Roll / UID | Full View | Full View | Masked (RBU21***) |
+| Cumulative GPA | Full View (with Visibility Toggle) | Visible (if permitted by student) | Hidden / Gated behind Auth |
+| Attendance Record | Full View (Internal only) | Hidden (Irrelevant for hiring) | Hidden |
+| Verified Skills | Full View + Add/Edit Actions | Full View + View Evidence Link | Read-Only Summary |
+| Honors & Awards | Full View + Request Review | Full View + Verify Issuer Link | Read-Only Summary |
+| Verification Proof | View Audit Log & Manage Keys | Interactive Signature Verification | Basic Verification Badge |
+
+11. UX Redesign Direction & Structural Wireframes (11_ux_redesign_direction.md)
+
+11.1 Desktop Interface Layout Wireframe (1440px)
+
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│  RAYAT BAHRA UNIVERSITY                      Viewing: Verified Public Profile  [Sign In]│
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                        │
+│  ┌────────────────────────────────────────────────────────┬─────────────────────────┐  │
+│  │ STUDENT IDENTITY                                       │ VERIFICATION STATUS     │  │
+│  │ [Avatar]  GULSHAN SINGH                                │ [✓] Officially Verified │  │
+│  │           B.Tech Computer Science & Engineering        │ Issuer: Office of Reg.  │  │
+│  │           Cohort: Class of 2025 • Year 3               │ Status: Active Student  │  │
+│  │           Roll No: RBU21CSE*** [Masked]                │ Issued: Aug 2021        │  │
+│  └────────────────────────────────────────────────────────┴─────────────────────────┘  │
+│                                                                                        │
+│  ┌───────────────────────────────────┬──────────────────────────────────────────────┐  │
+│  │ ACADEMIC STANDING                 │ CURRICULAR FOCUS                             │  │
+│  │ Status: In Good Standing          │ Systems programming, distributed computing,  │  │
+│  │ Cumulative GPA: 8.8 / 10.0        │ and autonomous agent workflows.             │  │
+│  │ Attendance: 92% (Regular)         │ [View Capstone Projects (3)]                 │  │
+│  │ Last Registrar Sync: Oct 5, 2026  │                                              │  │
+│  └───────────────────────────────────┴──────────────────────────────────────────────┘  │
+│                                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────────────────────┐  │
+│  │ CERTIFIED SKILLS & FACULTY ENDORSEMENTS                                          │  │
+│  │  ┌─────────────────────────┐  ┌─────────────────────────┐                        │  │
+│  │  │ Systems Architecture    │  │ Full-Stack TypeScript   │  [ + Propose Skill ]   │  │
+│  │  │ Endorsed by Dr. P. Sharma│  │ Endorsed via Capstone 2 │  (Authenticated Only)  │  │
+│  │  │ [View Project Proof]    │  │ [View GitHub Repository]│                        │  │
+│  │  └─────────────────────────┘  └─────────────────────────┘                        │  │
+│  └──────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────────────────────┐  │
+│  │ INSTITUTIONAL HONORS & AWARDS                                                    │  │
+│  │  ┌────────────────────────────────────────────────────────────────────────────┐  │  │
+│  │  │ Smart India Hackathon (SIH) 2026 Finalist • Dept. of CSE (Sept 2026)      │  │  │
+│  │  │ Certificate ID: RBU-HON-2026-089 • [Verify Certificate Signature]         │  │  │
+│  │  └────────────────────────────────────────────────────────────────────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────────────────────┐  │
+│  │ DIGITAL INTEGRITY & ATTESTATION                                                  │  │
+│  │ Cryptographic Signature: ed25519-valid ✓  •  Audit Trail ID: #98214              │  │
+│  │ [ Verify Public Key Signature ]     [ Download Official Transcript (PDF) ]       │  │
+│  └──────────────────────────────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+
+12. UI Component Specifications (12_ui_component_specs.md)
+
+Component Spec: Verified Skill Card
+
+Dimensions: Fluid width (min 280px, max 380px), Auto height.
+
+Border & Radius: 1px solid #E5E7EB, border-radius 8px.
+
+Padding: 16px internal padding.
+
+Child Elements:
+
+Category Eyebrow: 11px uppercase bold (#6B7280).
+
+Skill Name: 16px semi-bold (#111827).
+
+Endorsement Pill: Background #F0FDF4, border #BBF7D0, text #166534.
+
+Evidence Anchor: 13px link (#2563EB) with external link icon.
+
+Component Spec: Verification Attestation Footer
+
+Container: Background #F9FAFB, border-top 1px solid #E5E7EB, padding 24px 0.
+
+Interactive Elements:
+
+Secondary Button: Verify Signature, 14px Medium, border 1px solid #D1D5DB, background white.
+
+Primary Action: Download Sealed PDF, 14px Medium, background #1E3A8A, text white.
+
+13. Interaction and State Design System (13_interaction_states.md)
+
+┌────────────────────────────────────────────────────────────────────────┐
+│                        INTERACTION STATE MATRIX                        │
+├────────────────┬───────────────────────────────────────────────────────┤
+│ State          │ UI Manifestation                                      │
+├────────────────┼───────────────────────────────────────────────────────┤
+│ Default        │ Clean white surface, subtle stroke, 14px neutral text │
+│ Hover          │ Border shifts to brand tint, 2px elevation shadow     │
+│ Focus-Visible  │ 2px offset ring (#2563EB) for strict WCAG compliance  │
+│ Disabled       │ Opacity 45%, cursor not-allowed, tooltip on hover     │
+│ Loading        │ Skeleton pulse shimmer (1.5s cubic-bezier loop)       │
+│ Error / Failed │ Rose surface (#FFF1F2), stroke (#F43F5E), alert icon  │
+└────────────────┴───────────────────────────────────────────────────────┘
+
+
+
+Modal Interaction Loop: Add Skill Workflow
+
+Trigger: Authenticated student clicks + Add Skill.
+
+Modal Mounting: Backdrop fades in (opacity 0 to 0.4, 200ms). Dialog slides up 16px with focus automatically trapped on the search input.
+
+Validation Feedback: User types skill; system auto-matches accredited curriculum database.
+
+Submission: User clicks Submit for Review. CTA transitions to loading spinner; modal dismisses; inline toast confirms: "Submitted to Dept. of Computer Science for review".
+
+14. Visual Design Direction & Design Tokens (14_visual_design_direction.md)
+
+Institutional Design Tokens
+
+{
+  "color": {
+    "brand": {
+      "primary": "#1E3A8A",
+      "primary-hover": "#172554",
+      "accent": "#0D9488"
+    },
+    "surface": {
+      "page": "#F8FAFC",
+      "card": "#FFFFFF",
+      "muted": "#F1F5F9"
+    },
+    "text": {
+      "primary": "#0F172A",
+      "secondary": "#475569",
+      "tertiary": "#94A3B8"
+    },
+    "semantic": {
+      "success-bg": "#ECFDF5",
+      "success-text": "#065F46",
+      "warning-bg": "#FFFBEB",
+      "warning-text": "#92400E"
+    }
+  },
+  "typography": {
+    "fontFamily": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    "scale": {
+      "display": "28px",
+      "heading": "20px",
+      "subheading": "16px",
+      "body": "14px",
+      "caption": "12px"
+    }
+  }
+}
+
+
+
+15. Inclusive Design & Accessibility Specification (15_accessibility_specification.md)
+
+Target Compliance: WCAG 2.1 Level AA & Level AAA for typography contrast.
+
+Keyboard Focus Navigation: Dedicated tabindex="0" on interactive credential cards with clear :focus-visible styling (outline: 2px solid #2563EB; outline-offset: 2px).
+
+Screen Reader Announcer Architecture: Status updates (e.g., verifying signature, copying shareable link) must announce via an aria-live="polite" region.
+
+Touch Target Sizing: All buttons and interactive pills on mobile viewports must enforce a strict min-height: 48px and min-width: 48px clickable tap boundary.
+
+16. Usability Validation & Testing Plan (16_usability_validation_plan.md)
+
+16.1 Testing Cohort Specifications
+
+Students (n=5): Active undergraduate engineering students.
+
+Recruiters (n=4): 2 technical talent recruiters, 2 engineering hiring managers.
+
+Academic Verifiers (n=2): 2 faculty department heads.
+
+16.2 Core Benchmark Tasks & Success Metrics
+
+| Task Scenario | Target User | Quantitative Success Metric | Failure Condition |
+| Verify Enrollment Legitimacy | Recruiter | Time to completion < 15 seconds. | Inability to locate official university verification source. |
+| Inspect Cumulative GPA | Recruiter | 100% completion rate without external inquiry. | Ambiguity regarding grading scale or update timestamp. |
+| Configure Privacy & Hide GPA | Student | Task completion < 30 seconds. | Inability to locate visibility controls. |
+| Submit New Skill for Endorsement | Student | 0 critical errors during submission loop. | Dropping out due to lack of input validation feedback. |
+
+17. Prioritized Implementation Backlog (17_implementation_backlog.md)
+
+Priority 0: Critical Fixes (Execute Immediately / 48-Hour Sprint)
+
+SEC-P0-01: Redact unauthenticated student UID and GPA on public views.
+
+UX-P0-02: Remove non-functional action triggers (Add Skill, Add First Skill) from guest view.
+
+TRUST-P0-03: Remove static pseudo-cryptographic string (SHA256-RBU...) from footer.
+
+COPY-P0-04: Eliminate unsupported claims of "Zero-Trust Identity".
+
+Priority 1: High Priority Enhancements (Sprint 1–2)
+
+AUTH-P1-01: Integrate Institutional Single Sign-On (SAML / Google Workspace for Education).
+
+PRIV-P1-02: Implement student-controlled privacy settings (GPA visibility toggle).
+
+IA-P1-03: Deploy role-aware viewer modes (Guest vs. Owner vs. Recruiter).
+
+A11Y-P1-04: Resolve color contrast failures on secondary caption tokens.
+
+Priority 2: Medium Priority Features (Sprint 3–4)
+
+FEAT-P2-01: Build interactive skill ingestion modal with auto-complete curriculum taxonomy.
+
+FEAT-P2-02: Build faculty review & endorsement dashboard.
+
+DOC-P2-03: Add "Download Officially Sealed PDF" export function.
+
+18. Final Executive UX/UI Report (18_final_ux_ui_report.md)
+
+Executive Overview & Verdict
+
+Is the current page user-ready? No.
+
+Current State Classification: Static early-stage proof-of-concept prototype.
+
+Primary Risks: Critical privacy exposure of student academic records, complete lack of interactive functionality, and reputational risk stemming from ungrounded security assertions.
+
+Strategic Recommendation: Do not circulate or market the current deployment to students or corporate recruiters. Transition the prototype into an authenticated, institutional credential service adhering to the redesigned IA, component specifications, and privacy framework outlined in this document.
+
+Report Compiled & Signed by Senior UI/UX Systems Engineering Lead.

@@ -48,7 +48,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className }) =
   );
 };
 
-export interface GenericBadgeProps {
+export interface GenericBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   children: React.ReactNode;
   variant?: 'default' | 'success' | 'warning' | 'info' | 'danger';
   className?: string;
@@ -58,6 +58,7 @@ export const Badge: React.FC<GenericBadgeProps> = ({
   children,
   variant = 'default',
   className,
+  ...props
 }) => {
   const styles = {
     default: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700',
@@ -74,6 +75,7 @@ export const Badge: React.FC<GenericBadgeProps> = ({
         styles,
         className
       )}
+      {...props}
     >
       {children}
     </span>

@@ -94,8 +94,11 @@ export interface StudentSkill {
   readonly studentId: string;
   readonly skillId: string;
   readonly skillName: string;
+  readonly category?: string;
   readonly proficiencyLevel: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
   readonly endorsementCount: number;
+  readonly endorsedBy?: string;
+  readonly evidenceUrl?: string;
 }
 
 export interface StudentAchievement {
@@ -106,6 +109,7 @@ export interface StudentAchievement {
   readonly issueDate: string;
   readonly badgeIcon: string;
   readonly isVerified: boolean;
+  readonly certificateId?: string;
 }
 
 export interface Profile {
