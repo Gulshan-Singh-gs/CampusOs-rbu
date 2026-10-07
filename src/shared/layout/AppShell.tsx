@@ -30,10 +30,10 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     { to: '/events', icon: CalendarDays, label: 'Events Hub' },
     { to: '/clubs', icon: Users2, label: 'Societies' },
     { to: '/passport', icon: Award, label: 'Campus Passport' },
-    { to: '/peers', icon: Users, label: 'Social Graph' },
-    { to: '/squad', icon: Sparkles, label: 'Squad Swipe' },
-    { to: '/stories', icon: Camera, label: 'Campus Moments' },
-    { to: '/study-radar', icon: Compass, label: 'Study Radar' },
+    { to: '/coming-soon', icon: Users, label: 'Social Graph (Soon)' },
+    { to: '/coming-soon', icon: Sparkles, label: 'Squad Swipe (Soon)' },
+    { to: '/coming-soon', icon: Camera, label: 'Campus Moments (Soon)' },
+    { to: '/coming-soon', icon: Compass, label: 'Study Radar (Soon)' },
     { to: '/notifications', icon: Bell, label: 'Notifications' },
     { to: '/wizard', icon: FileSignature, label: 'Doc Wizard' },
     { to: '/applications', icon: FileCheck2, label: 'Applications' },
@@ -241,8 +241,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           {[
             { to: '/events', icon: CalendarDays, label: 'Events' },
             { to: '/passport', icon: Award, label: 'Passport' },
-            { to: '/squad', icon: Sparkles, label: 'Squad' },
-            { to: '/peers', icon: Users, label: 'Peers' },
+            { to: '/coming-soon', icon: Sparkles, label: 'Squad' },
+            { to: '/coming-soon', icon: Users, label: 'Peers' },
             { to: '/wizard', icon: FileSignature, label: 'Wizard' },
           ].map((item) => {
             const Icon = item.icon;

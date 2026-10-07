@@ -31,35 +31,15 @@ const CampusPassportView = lazy(() =>
     default: m.CampusPassportView,
   }))
 );
-const SocialGraphView = lazy(() =>
-  import('@/features/social/components/SocialGraphView').then((m) => ({
-    default: m.SocialGraphView,
-  }))
-);
-const SquadSwipeView = lazy(() =>
-  import('@/features/matching/components/SquadSwipeView').then((m) => ({
-    default: m.SquadSwipeView,
-  }))
-);
-const EphemeralChatView = lazy(() =>
-  import('@/features/chat/components/EphemeralChatView').then((m) => ({
-    default: m.EphemeralChatView,
-  }))
-);
-const CampusStoriesView = lazy(() =>
-  import('@/features/stories/components/CampusStoriesView').then((m) => ({
-    default: m.CampusStoriesView,
-  }))
-);
-const StudyBuddyRadarView = lazy(() =>
-  import('@/features/study/components/StudyBuddyRadarView').then((m) => ({
-    default: m.StudyBuddyRadarView,
-  }))
-);
+
 const NotificationsCenterView = lazy(() =>
   import('@/features/notifications/components/NotificationsCenterView').then((m) => ({
     default: m.NotificationsCenterView,
   }))
+);
+
+const ComingSoonView = lazy(() =>
+  import('@/shared/ui/ComingSoonView').then((m) => ({ default: m.ComingSoonView }))
 );
 
 const RouteLoadingSkeleton: React.FC = () => (
@@ -96,12 +76,20 @@ export const App: React.FC = () => {
                   </RequireAuth>
                 }
               />
-              <Route path="/passport/:uid" element={<CampusPassportView />} />
-              <Route path="/peers" element={<SocialGraphView />} />
-              <Route path="/squad" element={<SquadSwipeView />} />
-              <Route path="/chat" element={<EphemeralChatView />} />
-              <Route path="/stories" element={<CampusStoriesView />} />
-              <Route path="/study-radar" element={<StudyBuddyRadarView />} />
+              <Route
+                path="/passport/:uid"
+                element={
+                  <RequireAuth>
+                    <CampusPassportView />
+                  </RequireAuth>
+                }
+              />
+              <Route path="/coming-soon" element={<ComingSoonView />} />
+              <Route path="/peers" element={<ComingSoonView featureName="Social Graph" />} />
+              <Route path="/squad" element={<ComingSoonView featureName="Squad Swipe" />} />
+              <Route path="/chat" element={<ComingSoonView featureName="Ephemeral Chat" />} />
+              <Route path="/stories" element={<ComingSoonView featureName="Campus Moments" />} />
+              <Route path="/study-radar" element={<ComingSoonView featureName="Study Radar" />} />
               <Route path="/notifications" element={<NotificationsCenterView />} />
 
               {/* Administrative & Document Workflow */}

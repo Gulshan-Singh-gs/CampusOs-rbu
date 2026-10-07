@@ -5,7 +5,6 @@ import { supabase } from '@/shared/lib/supabase';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
 import {
-  ShieldCheck,
   Award,
   Printer,
   Sparkles,
@@ -13,16 +12,17 @@ import {
   ThumbsUp,
   GraduationCap,
   Plus,
-  KeyRound,
   AlertCircle,
   EyeOff,
+  Clock,
   CheckCircle2,
   HelpCircle,
   Info,
   Lock,
   X,
-  FileCheck,
   ExternalLink,
+  Copy,
+  Check,
 } from 'lucide-react';
 import type { StudentSkill, StudentAchievement, Profile } from '@/shared/types/app.types';
 
@@ -53,14 +53,14 @@ export const CampusPassportView: React.FC = () => {
   const [activeProfile, setActiveProfile] = useState<Profile | null>(loggedInProfile);
   const [profileNotFound, setProfileNotFound] = useState(false);
   const [docHash, setDocHash] = useState<string>('');
-  const [copied, setCopied] = useState(false);
+  const [copiedUid, setCopiedUid] = useState(false);
   const [liveAnnouncement, setLiveAnnouncement] = useState('');
   const [skills, setSkills] = useState<StudentSkill[]>([]);
   const [achievements, setAchievements] = useState<StudentAchievement[]>([]);
+  const [isAcademicDataLoading] = useState(false);
 
   // Modals & Controls
   const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
-  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
@@ -313,15 +313,14 @@ export const CampusPassportView: React.FC = () => {
     window.print();
   };
 
-  const handleCopyLink = () => {
-    const shareUrl = activeProfile?.rollNumber
-      ? `${window.location.origin}/passport/${encodeURIComponent(activeProfile.rollNumber)}`
-      : window.location.href;
-    navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setLiveAnnouncement('Shareable credential link copied to clipboard.');
+  const handleCopyUid = () => {
+    const rawUid = activeProfile?.rollNumber;
+    if (!rawUid) return;
+    navigator.clipboard.writeText(rawUid);
+    setCopiedUid(true);
+    setLiveAnnouncement(`Student UID ${rawUid} copied to clipboard.`);
     setTimeout(() => {
-      setCopied(false);
+      setCopiedUid(false);
       setLiveAnnouncement('');
     }, 2500);
   };
@@ -404,21 +403,34 @@ export const CampusPassportView: React.FC = () => {
       </aside>
 
       {/* 2. Top action header (hidden during print) */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 no-print">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 no-print">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight leading-snug" style={{ color: 'var(--text-primary)' }}>
             Verified Academic Credential & Digital Portfolio
           </h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-xs sm:text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
             Institutional student portfolio certified by Rayat Bahra University Registrar.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
-          <Button variant="secondary" onClick={handleCopyLink} size="sm" aria-label="Share passport link">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled
+            aria-label="Share Scoped Link (Feature disabled pending backend integration)"
+            className="flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] text-xs justify-center opacity-50 cursor-not-allowed"
+            title="Scoped sharing is disabled pending cryptographic signing backend integration."
+          >
             <Share2 className="w-4 h-4 mr-1.5" />
-            {copied ? 'Copied Share Link!' : 'Share Scoped Link'}
+            Share Scoped Link (Pending Backend)
           </Button>
-          <Button variant="primary" onClick={handlePrintPdf} size="sm" aria-label="Print or save as PDF">
+          <Button
+            variant="primary"
+            onClick={handlePrintPdf}
+            size="sm"
+            aria-label="Print or save as PDF"
+            className="flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] text-xs justify-center"
+          >
             <Printer className="w-4 h-4 mr-1.5" />
             Save Certified PDF
           </Button>
@@ -449,27 +461,50 @@ export const CampusPassportView: React.FC = () => {
                   {activeProfile?.fullName || 'Student Record'}
                 </h2>
                 <Badge
-                  variant="success"
-                  className="flex items-center gap-1 cursor-pointer"
+                  variant="warning"
+                  className="flex items-center gap-1"
                   role="status"
-                  onClick={() => setIsVerifyModalOpen(true)}
-                  aria-label="Enrolled Student • Verified by Rayat Bahra University Registrar"
-                  title="Click to view official digital certificate verification"
+                  aria-label="Enrolled Student • Verification Pending Backend Integration"
                 >
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
-                  Enrolled Student • Verified by Registrar
+                  <Clock className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
+                  Enrolled Student • [Verification Pending Backend Integration]
                 </Badge>
               </div>
               <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                 {activeProfile?.department || 'Computer Science & Engineering'} • Year {activeProfile?.yearOfStudy || 1}
               </p>
-              <p className="text-xs font-mono mt-1 opacity-75" style={{ color: 'var(--text-muted)' }}>
-                UID:{' '}
-                {showUid
-                  ? activeProfile?.rollNumber || 'RBU-STUDENT'
-                  : '•••••••••• (Redacted by student)'}{' '}
-                • Rayat Bahra University
-              </p>
+              <div className="flex flex-wrap items-center gap-2 text-xs font-mono mt-1" style={{ color: 'var(--text-muted)' }}>
+                <span>
+                  UID:{' '}
+                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {showUid
+                      ? activeProfile?.rollNumber || 'RBU-STUDENT'
+                      : '•••••••••• (Redacted by student)'}
+                  </span>
+                </span>
+                {showUid && activeProfile?.rollNumber && (
+                  <button
+                    type="button"
+                    onClick={handleCopyUid}
+                    title="Copy student roll number to clipboard"
+                    aria-label={`Copy student roll number ${activeProfile.rollNumber}`}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 hover:text-slate-200 transition-colors focus:outline-none focus:ring-1 focus:ring-primary-500 min-h-[28px] min-w-[28px]"
+                  >
+                    {copiedUid ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-400" />
+                        <span className="text-[10px] text-emerald-400 font-sans">Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        <span className="text-[10px] font-sans">Copy</span>
+                      </>
+                    )}
+                  </button>
+                )}
+                <span>• Rayat Bahra University</span>
+              </div>
             </div>
           </div>
 
@@ -479,11 +514,11 @@ export const CampusPassportView: React.FC = () => {
             style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--surface-border)' }}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-600 dark:text-emerald-400">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-amber-600 dark:text-amber-400">
                 Verification Status
               </span>
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Officially Verified
+              <span className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" /> [Verification Pending Backend Integration]
               </span>
             </div>
             <div className="space-y-1 pt-1 border-t text-[11px]" style={{ borderColor: 'var(--surface-border)' }}>
@@ -493,11 +528,15 @@ export const CampusPassportView: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-muted)' }}>Enrollment:</span>
-                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Active Enrolled Student</span>
+                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {activeProfile?.enrollmentStatus || 'Status Pending Verification'}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span style={{ color: 'var(--text-muted)' }}>Issued:</span>
-                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Aug 2021 • Cohort 2025</span>
+                <span style={{ color: 'var(--text-muted)' }}>Cohort:</span>
+                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {activeProfile?.cohort || 'Class of 2026'}
+                </span>
               </div>
             </div>
           </div>
@@ -512,44 +551,64 @@ export const CampusPassportView: React.FC = () => {
             <div className="text-xs uppercase tracking-wider font-bold text-primary-500">
               Academic Standing & Metrics
             </div>
-            <div className="space-y-1.5 text-xs">
-              <div className="flex items-center justify-between">
-                <span style={{ color: 'var(--text-muted)' }}>Degree Status:</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                  Active • Meets All Degree & Conduct Standards
-                </span>
+            {isAcademicDataLoading ? (
+              <div className="space-y-2 py-2 animate-pulse">
+                <div className="h-4 bg-slate-500/20 rounded w-3/4"></div>
+                <div className="h-4 bg-slate-500/20 rounded w-1/2"></div>
+                <div className="h-4 bg-slate-500/20 rounded w-2/3"></div>
               </div>
-              <div className="flex items-center justify-between">
-                <span style={{ color: 'var(--text-muted)' }}>Cumulative GPA:</span>
-                {showGpa ? (
-                  <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
-                    8.8 / 10.0 <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">(First Class with Distinction)</span>
+            ) : (
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span style={{ color: 'var(--text-muted)' }}>Degree Status:</span>
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">
+                    {activeProfile?.degreeStatus || '[Pending Registrar Verification]'}
                   </span>
-                ) : (
-                  <span className="text-slate-500 italic inline-flex items-center gap-1">
-                    <EyeOff className="w-3 h-3" /> Redacted by Student
+                </div>
+                <div className="flex items-center justify-between">
+                  <span style={{ color: 'var(--text-muted)' }}>Cumulative GPA:</span>
+                  {showGpa ? (
+                    activeProfile?.gpa !== undefined && activeProfile?.gpa !== null ? (
+                      <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
+                        {activeProfile.gpa.toFixed(2)} / 10.0
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 italic">
+                        [Pending Registrar Verification]
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-slate-500 italic inline-flex items-center gap-1">
+                      <EyeOff className="w-3 h-3" /> Redacted by Student
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span style={{ color: 'var(--text-muted)' }}>Class & Lab Attendance:</span>
+                  {showAttendance ? (
+                    activeProfile?.attendance !== undefined && activeProfile?.attendance !== null ? (
+                      <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                        {activeProfile.attendance}%
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 italic">
+                        [Pending Registrar Verification]
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-slate-500 italic inline-flex items-center gap-1">
+                      <EyeOff className="w-3 h-3" /> Redacted by Student
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t text-[11px]" style={{ borderColor: 'var(--surface-border)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Last Registrar Sync:</span>
+                  <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>
+                    {activeProfile?.lastSyncBatch || '[Sync Pending Backend Integration]'}
                   </span>
-                )}
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span style={{ color: 'var(--text-muted)' }}>Class & Lab Attendance:</span>
-                {showAttendance ? (
-                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    92% <span className="text-[11px] font-normal text-emerald-600 dark:text-emerald-400">(Exceeds 75% Requirement)</span>
-                  </span>
-                ) : (
-                  <span className="text-slate-500 italic inline-flex items-center gap-1">
-                    <EyeOff className="w-3 h-3" /> Redacted by Student
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center justify-between pt-1 border-t text-[11px]" style={{ borderColor: 'var(--surface-border)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Last Registrar Sync:</span>
-                <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>
-                  Oct 5, 2026 • SIS Batch #441
-                </span>
-              </div>
-            </div>
+            )}
           </div>
 
           <div
@@ -593,7 +652,8 @@ export const CampusPassportView: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsSkillModalOpen(true)}
-                className="text-xs no-print h-8 px-3"
+                className="text-xs no-print h-9 sm:h-8 px-3 min-h-[44px] sm:min-h-[32px]"
+                aria-label="Submit Skill for Review"
               >
                 <Plus className="w-3.5 h-3.5 mr-1" />
                 Submit Skill for Review
@@ -622,14 +682,21 @@ export const CampusPassportView: React.FC = () => {
               </div>
               <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
                 {isSelf && (
-                  <Button size="sm" variant="primary" onClick={() => setIsSkillModalOpen(true)}>
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Skill for Review
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => setIsSkillModalOpen(true)}
+                    className="min-h-[48px] px-4 font-semibold text-xs flex items-center justify-center"
+                    aria-label="Add First Skill for Review"
+                  >
+                    <Plus className="w-4 h-4 mr-1.5" /> Add First Skill for Review
                   </Button>
                 )}
                 <button
                   type="button"
                   onClick={() => setIsHelpModalOpen(true)}
-                  className="text-xs text-primary-500 hover:underline inline-flex items-center gap-1"
+                  className="text-xs text-primary-500 hover:underline inline-flex items-center gap-1 min-h-[48px] px-3"
+                  aria-label="How skill endorsement works"
                 >
                   <Info className="w-3.5 h-3.5" /> How skill endorsement works
                 </button>
@@ -771,14 +838,9 @@ export const CampusPassportView: React.FC = () => {
                       <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
                         Certificate ID: {ach.certificateId || `RBU-HON-2026-${ach.id.slice(0, 4).toUpperCase()}`}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => setIsVerifyModalOpen(true)}
-                        className="text-primary-500 hover:underline inline-flex items-center gap-1 font-medium text-[11px] no-print focus:outline-none"
-                      >
-                        <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                        Verify Certificate Signature
-                      </button>
+                      <span className="text-amber-500 text-[11px] font-medium flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> [Verification Pending Backend Integration]
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -792,38 +854,45 @@ export const CampusPassportView: React.FC = () => {
           className="pt-6 border-t flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs"
           style={{ borderColor: 'var(--surface-border)', color: 'var(--text-secondary)' }}
         >
-          <div className="space-y-1">
+          <div className="space-y-1.5 w-full md:w-auto">
             <div className="flex items-center gap-2 font-medium" style={{ color: 'var(--text-primary)' }}>
-              <GraduationCap className="w-4 h-4 shrink-0 text-emerald-500" aria-hidden="true" />
-              <span>Digitally Certified Record • Rayat Bahra University Student Information System</span>
+              <GraduationCap className="w-4 h-4 shrink-0 text-amber-500" aria-hidden="true" />
+              <span>Institutional Academic Record • Rayat Bahra University SIS</span>
             </div>
-            <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              <span>Cryptographic Signature: ed25519-valid ✓</span>
-              <span>•</span>
-              <span>Audit Trail ID: #98214</span>
-              <span>•</span>
-              <span className="truncate max-w-[200px]" title={docHash}>
-                Hash: {docHash ? `${docHash.substring(0, 16)}...` : 'Computing'}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>
+              <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold">
+                [Verification Pending Backend Integration]
               </span>
+              <span>•</span>
+              <div className="inline-flex items-center gap-1 bg-slate-500/10 px-1.5 py-0.5 rounded max-w-full">
+                <span className="text-[10px] text-slate-400">Client Checksum:</span>
+                <span className="font-mono text-[10px] text-slate-300 truncate max-w-[120px] sm:max-w-[200px]" title={docHash}>
+                  {docHash ? `${docHash.substring(0, 12)}...` : 'Calculating...'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (docHash) {
+                      navigator.clipboard.writeText(docHash);
+                      setLiveAnnouncement('Cryptographic SHA-256 digest copied to clipboard.');
+                    }
+                  }}
+                  title="Copy full cryptographic digest"
+                  aria-label="Copy full cryptographic digest"
+                  className="text-slate-400 hover:text-white p-0.5"
+                >
+                  <Copy className="w-2.5 h-2.5" />
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto no-print">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setIsVerifyModalOpen(true)}
-              className="text-xs h-9"
-              aria-label="Verify public cryptographic signature"
-            >
-              <KeyRound className="w-3.5 h-3.5 mr-1.5 text-primary-500" />
-              Verify Public Key Signature
-            </Button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto no-print pt-2 md:pt-0">
             <Button
               variant="primary"
               size="sm"
               onClick={handlePrintPdf}
-              className="text-xs h-9"
+              className="text-xs min-h-[44px] sm:min-h-[36px] flex items-center justify-center"
               aria-label="Download officially sealed PDF"
             >
               <Printer className="w-3.5 h-3.5 mr-1.5" />
@@ -952,87 +1021,6 @@ export const CampusPassportView: React.FC = () => {
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------- */}
-      {/* MODAL 2: Interactive Cryptographic Signature Verification     */}
-      {/* ------------------------------------------------------------- */}
-      {isVerifyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm no-print">
-          <div
-            className="soft-card p-6 sm:p-8 max-w-lg w-full space-y-5 border shadow-2xl relative"
-            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--surface-border)' }}
-          >
-            <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: 'var(--surface-border)' }}>
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                  <FileCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
-                    Institutional Public Key Verification
-                  </h3>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Standardized SHA-256 digital certificate audit
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsVerifyModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-slate-500/10"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3.5 text-xs">
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex items-center gap-2.5">
-                <CheckCircle2 className="w-5 h-5 shrink-0" />
-                <div>
-                  <p className="font-bold">Digital Signature Valid & Unaltered</p>
-                  <p className="text-[11px] opacity-90">
-                    Matches Rayat Bahra University SIS cryptographic ledger.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2 p-3.5 rounded-xl border" style={{ borderColor: 'var(--surface-border)', backgroundColor: 'var(--card-bg)' }}>
-                <div className="flex justify-between">
-                  <span style={{ color: 'var(--text-muted)' }}>Issuing Authority:</span>
-                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Rayat Bahra University Registrar</span>
-                </div>
-                <div className="flex justify-between">
-                  <span style={{ color: 'var(--text-muted)' }}>Academic Period:</span>
-                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Fall 2026 Active Enrollment</span>
-                </div>
-                <div className="flex justify-between">
-                  <span style={{ color: 'var(--text-muted)' }}>Enrolled Subject:</span>
-                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{activeProfile?.fullName} ({activeProfile?.rollNumber})</span>
-                </div>
-                <div className="flex justify-between">
-                  <span style={{ color: 'var(--text-muted)' }}>Verification Engine:</span>
-                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>SubtleCrypto Web API (SHA-256)</span>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold uppercase tracking-wider text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                  Computed SHA-256 Digest
-                </label>
-                <div className="p-2.5 rounded-lg font-mono text-[11px] break-all bg-slate-900 text-emerald-400 border border-slate-800">
-                  {docHash || 'Calculating...'}
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <Button variant="primary" size="sm" onClick={() => setIsVerifyModalOpen(false)}>
-                Close Audit Dialog
-              </Button>
-            </div>
           </div>
         </div>
       )}

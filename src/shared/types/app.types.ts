@@ -126,6 +126,13 @@ export interface Profile {
   readonly githubUrl?: string;
   readonly linkedinUrl?: string;
   readonly createdAt: string;
+  // Academic Metrics & Standing (Server authoritative)
+  readonly gpa?: number | null;
+  readonly attendance?: number | null;
+  readonly degreeStatus?: string;
+  readonly lastSyncBatch?: string;
+  readonly enrollmentStatus?: string;
+  readonly cohort?: string;
   // Campus Passport relational aggregations
   readonly skills?: StudentSkill[];
   readonly achievements?: StudentAchievement[];
