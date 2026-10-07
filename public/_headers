@@ -1,18 +1,8 @@
-/* Cloudflare Pages Security Headers & Rules */
-
-/* Global Security Headers */
-/* ========================================================================== */
-/* Cross-Origin & Frame Protection */
-X-Frame-Options: SAMEORIGIN
-X-Content-Type-Options: nosniff
-Referrer-Policy: strict-origin-when-cross-origin
-
-/* Permissions Policy: Disable invasive sensor/hardware APIs */
-Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
-
-/* Strict-Transport-Security (HSTS) */
-Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-
-/* Strict Content Security Policy (CSP) */
-/* Disallows unauthorized external resources, restricts script execution and framing */
-Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'self';
+/*
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'self';
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()

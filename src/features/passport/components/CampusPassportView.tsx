@@ -651,12 +651,14 @@ export const CampusPassportView: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsSkillModalOpen(true)}
-                className="text-xs no-print h-9 sm:h-8 px-3 min-h-[44px] sm:min-h-[32px]"
-                aria-label="Submit Skill for Review"
+                disabled
+                aria-disabled="true"
+                title="Feature unavailable - backend integration pending"
+                className="text-xs no-print h-9 sm:h-8 px-3 min-h-[44px] sm:min-h-[32px] opacity-50 cursor-not-allowed"
+                aria-label="Submit Skill for Review (Feature unavailable - backend integration pending)"
               >
                 <Plus className="w-3.5 h-3.5 mr-1" />
-                Submit Skill for Review
+                Submit Skill for Review (Disabled)
               </Button>
             )}
           </div>
@@ -685,11 +687,13 @@ export const CampusPassportView: React.FC = () => {
                   <Button
                     size="sm"
                     variant="primary"
-                    onClick={() => setIsSkillModalOpen(true)}
-                    className="min-h-[48px] px-4 font-semibold text-xs flex items-center justify-center"
-                    aria-label="Add First Skill for Review"
+                    disabled
+                    aria-disabled="true"
+                    title="Feature unavailable - backend integration pending"
+                    className="min-h-[48px] px-4 font-semibold text-xs flex items-center justify-center opacity-50 cursor-not-allowed"
+                    aria-label="Add First Skill for Review (Feature unavailable - backend integration pending)"
                   >
-                    <Plus className="w-4 h-4 mr-1.5" /> Add First Skill for Review
+                    <Plus className="w-4 h-4 mr-1.5" /> Add First Skill (Pending Backend)
                   </Button>
                 )}
                 <button
@@ -1064,7 +1068,7 @@ export const CampusPassportView: React.FC = () => {
                     Display Cumulative GPA
                   </p>
                   <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                    Shows 8.8 / 10 to external recruiters.
+                    Controls GPA visibility to external evaluators.
                   </p>
                 </div>
                 <input
@@ -1081,7 +1085,7 @@ export const CampusPassportView: React.FC = () => {
                     Display Attendance Metrics
                   </p>
                   <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                    Shows 92% institutional attendance record.
+                    Controls attendance records visibility to external evaluators.
                   </p>
                 </div>
                 <input
