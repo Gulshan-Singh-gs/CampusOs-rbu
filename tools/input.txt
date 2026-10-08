@@ -1,78 +1,173 @@
-Prompt for Coding AI Agent: Phase 3 - Production Deployment & Institutional Onboarding
-1. Context & Trigger
-Previous Status: Phase 2.5 complete. Auth adapter OIDC-ready. Accessibility WCAG 2.1 AA compliant. Backend secure and tested. 17/17 tests passing.
-Current State: Application is technically production-ready but deployed on *.pages.dev with mock auth. University IT has not yet provided SSO credentials or custom domain.
-2. Mission Objective
-Prepare the application for live institutional deployment by:
-Creating comprehensive deployment documentation for University IT.
-Implementing feature flags for gradual rollout.
-Adding production monitoring and observability hooks.
-Generating final compliance artifacts (security, accessibility, privacy).
-DO NOT add new features. DO NOT modify core architecture. DO prepare for handoff to University IT and live users.
-3. Execution Tasks (Strict Sequence)
-Task 1: Create University IT Deployment Handbook
-Generate docs/DEPLOYMENT_GUIDE.md containing:
-Step-by-step OIDC client registration instructions for Keycloak/Entra ID/Shibboleth.
-Exact environment variables required (VITE_AUTH_PROVIDER, VITE_OIDC_ISSUER_URL, etc.).
-Cloudflare Pages configuration checklist (secrets, custom domain, DNS).
-Backend JWKS verification setup with university IdP public keys.
-Rollback procedure if SSO integration fails.
-Contact information for CampusOS dev team support.
-Task 2: Implement Feature Flags for Gradual Rollout
-Create src/lib/featureFlags.ts:
-Define flags: ENABLE_REAL_SSO, ENABLE_SKILL_SUBMISSION, ENABLE_HONORS_VERIFICATION.
-Read flags from environment variable FEATURE_FLAGS (JSON string).
-Wrap SSO login button with ENABLE_REAL_SSO check; show mock login if disabled.
-Wrap skill submission UI with ENABLE_SKILL_SUBMISSION check.
-Add admin debug panel (dev-only) to toggle flags at runtime for testing.
-Task 3: Add Production Observability Hooks
-Create src/lib/telemetry.ts:
-Structured logging for auth events (login success/failure, logout, token refresh).
-Error boundary capturing unhandled exceptions with stack traces.
-Performance metrics collection (API latency, LCP, FID) sent to analytics endpoint.
-Privacy-compliant: no PII in logs; all data anonymized.
-Console warnings in dev; silent in prod unless error.
-Task 4: Generate Compliance Artifacts
-Create docs/compliance/ directory with:
-SECURITY_AUDIT_REPORT.md: Summary of all resolved defects (SEC-01 through SEC-04) with evidence links.
-ACCESSIBILITY_CONFORMANCE_REPORT.md: WCAG 2.1 AA compliance statement with contrast ratios and focus trap verification.
-PRIVACY_IMPACT_ASSESSMENT.md: Data flow diagram, PII handling policy, retention schedule, user rights (access/delete/correct).
-THIRD_PARTY_DEPENDENCIES.md: List of all npm packages with license types and security audit status.
-Task 5: Final Pre-Deployment Checklist
-Create CHECKLIST_PRODUCTION_DEPLOYMENT.md:
-Custom domain campusos.rayatbahrauniversity.edu.in configured in Cloudflare DNS
-SSL certificate auto-provisioned via Cloudflare
-Environment secrets set in Cloudflare Pages Dashboard
-Feature flags configured for initial rollout (SSO disabled until IT confirms)
-Monitoring alerts configured for 4xx/5xx error rate spikes
-Backup/restore procedure documented for student data
-User acceptance testing sign-off from Registrar Office
-Privacy policy published and linked in footer
-Accessibility statement published and linked in footer
-4. Verification Protocol (MANDATORY)
-Deliverable
-Acceptance Criteria
-Evidence Required
-Deployment Handbook
-IT staff can follow steps without developer assistance
-Peer review by non-dev stakeholder
-Feature Flags
-Toggling flag disables/enables feature without code change
-Screenshot of debug panel + UI state change
-Telemetry
-Auth events logged; no PII in console; errors captured
-Log output sample + error boundary test
-Compliance Docs
-All four documents complete with accurate data
-Document review checklist
-Pre-Deploy Checklist
-All items actionable; no vague statements
-Checklist completeness audit
-5. Output Requirements
-All documentation files created in /docs/ with proper markdown formatting.
-Feature flag implementation with debug panel (dev-only).
-Telemetry module with privacy-compliant logging.
-Compliance artifacts ready for institutional review.
-Final summary report confirming Phase 3 readiness.
-6. Execution Command
-Begin Task 1 immediately. Do not proceed to Task 2 until Deployment Handbook is complete and reviewed. Treat this as preparing a mission-critical system for institutional adoption — clarity and completeness are non-negotiable.
+1. Mission Context
+Current State: v2.0.1 Authentication Integrity Release complete. Cryptographic auth verified via runtime adversarial tests. Compliance docs updated. RLS/A11y audits pending empirical confirmation.
+Objective: Execute a complete end-to-end integration test across ALL user workflows on the LIVE deployment (https://campusos-rbu-owv.pages.dev). Validate that source code intent matches live behavior. Identify any gaps between development testing and production reality.
+DO NOT add features. DO NOT modify security architecture. ONLY validate existing functionality through real user journeys.
+2. Execution Mandate
+You will act as an automated E2E tester with full browser automation capabilities. You must:
+Read the entire source codebase to understand intended behavior.
+Interact with the LIVE site exactly as real users would.
+Document discrepancies between code intent and live behavior.
+Produce a definitive "Production Go/No-Go" assessment.
+3. Test Scope: Complete User Journey Matrix
+Journey A: Anonymous Visitor → Onboarding → Authenticated Passport
+Step
+Expected Behavior
+Live Verification Required
+Visit /passport unauthenticated
+Redirect to /onboarding?redirect=/passport
+Confirm 302 redirect + correct query param preservation
+Click "Login with University SSO"
+Redirect to IdP authorization endpoint
+Confirm PKCE params present in URL
+Complete IdP login (test account)
+Redirect back to /auth/callback?code=...
+Confirm token exchange succeeds
+Post-auth redirect to /passport
+Load authenticated profile view
+Confirm UID from token claims, NOT URL
+View academic metrics
+Display GPA, attendance, status
+Confirm data matches authoritative record
+Verify privacy controls
+Toggle GPA/attendance visibility
+Confirm UI updates WITHOUT re-fetching sensitive data
+Journey B: Skill Submission Workflow (Authenticated)
+Step
+Expected Behavior
+Live Verification Required
+Navigate to Skills section
+Show empty state or existing skills
+Confirm no hardcoded data
+Click "Add Skill" button
+Open modal with focus trap
+Confirm Tab cycles ONLY within modal
+Enter valid skill name (e.g., "Distributed Systems")
+Real-time char count updates
+Confirm validation feedback appears correctly
+Submit skill
+Show loading spinner → success toast
+Confirm POST to /api/v1/skills/submit returns 201
+Verify persistence
+Refresh page → skill still visible
+Confirm KV/D1 storage retained data
+Attempt duplicate submission
+Show appropriate error/validation
+Confirm idempotency or clear error message
+Press Escape in modal
+Modal closes, focus returns to trigger
+Confirm background content regains focus
+Journey C: Adversarial Security Validation (Live)
+Attack Vector
+Expected Defense
+Live Verification Required
+Send Authorization: Bearer RBU21CSE046
+401 Unauthorized
+Confirm forged roll number rejected
+Send unsigned JWT
+401 Unauthorized
+Confirm signature verification active
+Modify JWT payload (alg:none)
+401 Unauthorized
+Confirm algorithm validation enforced
+Append ?uid=ADMIN to API call
+Parameter ignored
+Confirm identity from token claims only
+Access /api/v1/student/profile without cookie
+401 Unauthorized
+Confirm session gate functional
+Rapid-fire requests (11th req/min)
+429 Too Many Requests
+Confirm rate limiting active
+Journey D: Accessibility & Responsive Validation
+Test Case
+Expected Standard
+Live Verification Required
+Keyboard-only navigation
+All interactive elements reachable
+Confirm no keyboard traps outside modals
+Screen reader announcement
+Status badges read meaningfully
+Confirm role="status" + aria-label present
+Mobile viewport (375px)
+No horizontal overflow, tap targets ≥48px
+Confirm layout adapts correctly
+High contrast mode
+Text meets WCAG AAA ratios
+Confirm prefers-contrast: more styles apply
+Error states
+Announced to assistive tech
+Confirm error messages have aria-live="polite"
+4. Source Code vs. Live Behavior Cross-Reference Protocol
+For EVERY tested workflow, produce this comparison table:
+Component / Feature
+Source Code Intent (File:Line)
+Live Behavior Observed
+Match?
+Discrepancy Details
+Severity
+Auth Gate
+_worker.js:45 - verifyJwtCryptographically()
+Returns 401 for invalid tokens
+✅ YES
+None
+N/A
+Skill Storage
+_worker.js:112 - CAMPUSOS_KV.put()
+Data persists after refresh
+✅ YES
+None
+N/A
+Focus Trap
+useFocusTrap.ts:28 - confineTab()
+Tab escapes modal on mobile
+❌ NO
+Touch events bypass JS trap
+P1
+Privacy Toggle
+CampusPassportView.tsx:89 - showGpa state
+GPA hides visually but API still sends it
+️ PARTIAL
+Client-side only; server should filter
+P2
+Rate Limiter
+_worker.js:78 - RATE_LIMIT_WINDOW
+11th request returns 429
+✅ YES
+None
+N/A
+Severity Definitions:
+✅ YES: Perfect match between code intent and live behavior.
+⚠️ PARTIAL: Works but with limitations or incomplete implementation.
+❌ NO: Critical mismatch; live behavior contradicts code intent or security requirements.
+5. Required Deliverables
+5.1 Comprehensive E2E Test Report (docs/E2E_INTEGRATION_REPORT.md)
+Executive summary with Go/No-Go recommendation.
+Complete journey matrix results (A-D above).
+Source-vs-Live cross-reference table.
+Screenshot/video evidence of all critical flows.
+Network HAR files for authenticated sessions.
+5.2 Defect Triage List
+Categorize all findings by:
+BLOCKER: Prevents deployment (e.g., auth bypass, data loss).
+MAJOR: Significant UX/security gap requiring fix before launch.
+MINOR: Polish issue acceptable for post-launch patch.
+ENHANCEMENT: Future improvement, not blocking.
+5.3 Updated Production Readiness Assessment
+Revise CHECKLIST_FINAL_DEPLOYMENT_SIGNOFF.md with actual test outcomes. Mark items as:
+✅ VERIFIED (tested live)
+⚠️ CONDITIONAL (works with caveats)
+❌ FAILED (requires remediation)
+➖ NOT APPLICABLE
+5.4 Final Recommendation Statement
+Provide one of these definitive conclusions:
+"GO FOR DEPLOYMENT" – All critical paths validated, no blockers found.
+"CONDITIONAL GO" – Minor issues identified; deploy with documented workarounds.
+"NO-GO" – Critical defects discovered; remediation required before launch.
+6. Execution Constraints
+Use REAL test accounts provisioned in the university IdP. Do NOT use mock credentials.
+Test on ACTUAL devices where possible (mobile phone, tablet), not just browser emulation.
+Capture NETWORK TRAFFIC for every authenticated request to verify headers, tokens, and responses.
+DO NOT MODIFY PRODUCTION DATA. Use designated test UIDs and clean up submissions after testing.
+TIMEBOX: Complete all journeys within 4 hours. Prioritize Journey A and C if time-constrained.
+7. Execution Command
+Begin Journey A immediately. Start with anonymous access validation, then proceed through full auth flow. Capture all network traffic. After completing Journey A, immediately begin Journey C (adversarial tests) to confirm security holds under live conditions. Document EVERY discrepancy between source code and live behavior. Produce the complete E2E report with Go/No-Go recommendation.

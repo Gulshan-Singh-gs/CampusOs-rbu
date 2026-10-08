@@ -153,15 +153,15 @@ export const CampusPassportView: React.FC = () => {
       setIsLoadingProfile(true);
       setIsAcademicDataLoading(true);
 
-      // Determine auth token for server-authoritative API
-      const authToken = loggedInProfile?.rollNumber || 'RBU21CSE045';
+      // Determine auth token from active session or authAdapter
+      const { authAdapter } = await import('@/lib/auth');
+      const sessionToken = authAdapter.getAccessToken() || '';
+      const authHeaders: Record<string, string> = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {};
 
       try {
         // Fetch server-authoritative student profile from backend API
         const profileRes = await fetch('/api/v1/student/profile', {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
+          headers: authHeaders,
         });
 
         if (!profileRes.ok) {
@@ -369,15 +369,19 @@ export const CampusPassportView: React.FC = () => {
     }
 
     setSubmittingSkill(true);
-    const token = loggedInProfile?.rollNumber || activeProfile?.rollNumber || 'RBU21CSE045';
+    const { authAdapter } = await import('@/lib/auth');
+    const sessionToken = authAdapter.getAccessToken() || '';
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (sessionToken) {
+      headers['Authorization'] = `Bearer ${sessionToken}`;
+    }
 
     try {
       const response = await fetch('/api/v1/skills/submit', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify({
           skillName: trimmed,
           category: newSkillCategory,

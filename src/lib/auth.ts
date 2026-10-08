@@ -27,7 +27,7 @@ export interface AuthAdapter {
   logout(): Promise<void>;
   isAuthenticated(): Promise<boolean>;
   refreshToken?(): Promise<string | null>;
-  getAccessToken?(): string | null;
+  getAccessToken(): string | null;
 }
 
 export interface OIDCConfig {
@@ -83,31 +83,30 @@ export class MockAuthAdapter implements AuthAdapter {
     const sessionCookie = getCookie('campusos_session');
     if (sessionCookie) {
       try {
-        const claims = JSON.parse(sessionCookie);
-        this.currentUser = {
-          id: claims.sub || 'e29f1092-2309-425b-9ff1-91d8487b2938',
-          email: claims.email || 'student@rbu.ac.in',
-          fullName: claims.name || claims.fullName || 'Gaurav Sen',
-          rollNumber: claims.uid || 'RBU21CSE045',
-          department: claims.department || 'Computer Science & Engineering',
-          yearOfStudy: claims.yearOfStudy || 4,
-          role: 'student',
-          isVerified: true,
-        };
-      } catch {
-        // Fallback for standard token string
-        if (sessionCookie === 'valid_mock_token' || /^RBU/i.test(sessionCookie)) {
+        let claims: any = null;
+        if (sessionCookie.includes('.')) {
+          const parts = sessionCookie.split('.');
+          if (parts.length === 3) {
+            claims = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+          }
+        } else {
+          claims = JSON.parse(sessionCookie);
+        }
+
+        if (claims) {
           this.currentUser = {
-            id: 'e29f1092-2309-425b-9ff1-91d8487b2938',
-            email: 'gaurav.sen@rbu.ac.in',
-            fullName: 'Gaurav Sen',
-            rollNumber: 'RBU21CSE045',
-            department: 'Computer Science & Engineering',
-            yearOfStudy: 4,
+            id: claims.sub || 'e29f1092-2309-425b-9ff1-91d8487b2938',
+            email: claims.email || 'student@rbu.ac.in',
+            fullName: claims.name || claims.fullName || 'Gaurav Sen',
+            rollNumber: claims.uid || 'RBU21CSE045',
+            department: claims.department || 'Computer Science & Engineering',
+            yearOfStudy: claims.yearOfStudy || 4,
             role: 'student',
             isVerified: true,
           };
         }
+      } catch {
+        this.currentUser = null;
       }
     }
   }
@@ -131,7 +130,11 @@ export class MockAuthAdapter implements AuthAdapter {
       exp: Math.floor(Date.now() / 1000) + 7 * 86400,
     };
 
-    const token = JSON.stringify(mockClaims);
+    const header = { alg: 'RS256', typ: 'JWT', kid: 'rbu-idp-key-2026' };
+    const b64Header = btoa(JSON.stringify(header)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const b64Payload = btoa(JSON.stringify(mockClaims)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const b64Signature = btoa('mock_development_rs256_signature_bytes_authenticated').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const token = `${b64Header}.${b64Payload}.${b64Signature}`;
     setCookie('campusos_session', token, 7);
 
     this.currentUser = {

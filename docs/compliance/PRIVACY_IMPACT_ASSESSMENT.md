@@ -62,6 +62,7 @@ CampusOS implements student-controlled privacy switches:
 
 ## 5. Security Safeguards & Redaction Guarantees
 
-- **No Third-Party Tracking:** Zero advertising, cross-site trackers, or commercial marketing SDKs are loaded.
+- **No Third-Party Tracking:** Zero commercial marketing SDKs, trackers, or ad-tech scripts are loaded.
 - **Client-Side SHA-256 Hashing:** Checksums are generated on-device using browser `crypto.subtle`.
-- **Telemetry Redaction:** The telemetry module automatically strips all emails, names, passwords, and tokens before logging.
+- **Telemetry Redaction:** The telemetry module automatically sanitizes all payloads, scrubbing emails, full names, passwords, secrets, and raw tokens into `[REDACTED_PII]` prior to in-memory buffering or error reporting.
+- **Edge Audit Logging:** Cloudflare Workers log timestamps, HTTP methods, paths, and client IP addresses for rate limiting and threat detection. In accordance with university data governance, logs are retained in edge streams for a maximum of 7 days before automated deletion.

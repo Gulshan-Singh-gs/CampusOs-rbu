@@ -177,7 +177,7 @@ export const OnboardingView: React.FC = () => {
             style={{ color: 'var(--text-muted)' }}
           >
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            Row Level Security (RLS) & Local Encryption Active
+            Institutional Access Control & Data Minimization Active
           </p>
         </div>
       </div>
