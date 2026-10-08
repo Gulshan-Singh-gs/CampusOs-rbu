@@ -187,12 +187,14 @@ USING (
     blocker_id IN (SELECT id FROM public.profiles WHERE auth_user_id = auth.uid() OR auth.uid() IS NULL)
 );
 
-DROP POLICY IF EXISTS "Users can block other users" ON public.chat_user_blocks FOR INSERT
+DROP POLICY IF EXISTS "Users can block other users" ON public.chat_user_blocks;
+CREATE POLICY "Users can block other users" ON public.chat_user_blocks FOR INSERT
 WITH CHECK (
     blocker_id IN (SELECT id FROM public.profiles WHERE auth_user_id = auth.uid() OR auth.uid() IS NULL)
 );
 
-DROP POLICY IF EXISTS "Users can unblock" ON public.chat_user_blocks FOR DELETE
+DROP POLICY IF EXISTS "Users can unblock" ON public.chat_user_blocks;
+CREATE POLICY "Users can unblock" ON public.chat_user_blocks FOR DELETE
 USING (
     blocker_id IN (SELECT id FROM public.profiles WHERE auth_user_id = auth.uid() OR auth.uid() IS NULL)
 );
@@ -209,7 +211,8 @@ USING (
     )
 );
 
-DROP POLICY IF EXISTS "Users can submit reports" ON public.chat_moderation_reports FOR INSERT
+DROP POLICY IF EXISTS "Users can submit reports" ON public.chat_moderation_reports;
+CREATE POLICY "Users can submit reports" ON public.chat_moderation_reports FOR INSERT
 WITH CHECK (
     reporter_id IN (SELECT id FROM public.profiles WHERE auth_user_id = auth.uid() OR auth.uid() IS NULL)
 );
