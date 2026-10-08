@@ -43,6 +43,10 @@ const ComingSoonView = lazy(() =>
   import('@/shared/ui/ComingSoonView').then((m) => ({ default: m.ComingSoonView }))
 );
 
+const EphemeralChatView = lazy(() =>
+  import('@/features/chat/components/EphemeralChatView').then((m) => ({ default: m.EphemeralChatView }))
+);
+
 const RouteLoadingSkeleton: React.FC = () => (
   <div className="max-w-4xl mx-auto px-4 py-12 flex flex-col items-center justify-center space-y-4">
     <div className="w-8 h-8 rounded-full border-2 border-primary-500 border-t-transparent animate-spin" />
@@ -88,7 +92,14 @@ export const App: React.FC = () => {
               <Route path="/coming-soon" element={<ComingSoonView />} />
               <Route path="/peers" element={<ComingSoonView featureName="Social Graph" />} />
               <Route path="/squad" element={<ComingSoonView featureName="Squad Swipe" />} />
-              <Route path="/chat" element={<ComingSoonView featureName="Ephemeral Chat" />} />
+              <Route
+                path="/chat"
+                element={
+                  <RequireAuth>
+                    <EphemeralChatView />
+                  </RequireAuth>
+                }
+              />
               <Route path="/stories" element={<ComingSoonView featureName="Campus Moments" />} />
               <Route path="/study-radar" element={<ComingSoonView featureName="Study Radar" />} />
               <Route path="/notifications" element={<NotificationsCenterView />} />

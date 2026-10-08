@@ -1,173 +1,145 @@
-1. Mission Context
-Current State: v2.0.1 Authentication Integrity Release complete. Cryptographic auth verified via runtime adversarial tests. Compliance docs updated. RLS/A11y audits pending empirical confirmation.
-Objective: Execute a complete end-to-end integration test across ALL user workflows on the LIVE deployment (https://campusos-rbu-owv.pages.dev). Validate that source code intent matches live behavior. Identify any gaps between development testing and production reality.
-DO NOT add features. DO NOT modify security architecture. ONLY validate existing functionality through real user journeys.
-2. Execution Mandate
-You will act as an automated E2E tester with full browser automation capabilities. You must:
-Read the entire source codebase to understand intended behavior.
-Interact with the LIVE site exactly as real users would.
-Document discrepancies between code intent and live behavior.
-Produce a definitive "Production Go/No-Go" assessment.
-3. Test Scope: Complete User Journey Matrix
-Journey A: Anonymous Visitor → Onboarding → Authenticated Passport
-Step
-Expected Behavior
-Live Verification Required
-Visit /passport unauthenticated
-Redirect to /onboarding?redirect=/passport
-Confirm 302 redirect + correct query param preservation
-Click "Login with University SSO"
-Redirect to IdP authorization endpoint
-Confirm PKCE params present in URL
-Complete IdP login (test account)
-Redirect back to /auth/callback?code=...
-Confirm token exchange succeeds
-Post-auth redirect to /passport
-Load authenticated profile view
-Confirm UID from token claims, NOT URL
-View academic metrics
-Display GPA, attendance, status
-Confirm data matches authoritative record
-Verify privacy controls
-Toggle GPA/attendance visibility
-Confirm UI updates WITHOUT re-fetching sensitive data
-Journey B: Skill Submission Workflow (Authenticated)
-Step
-Expected Behavior
-Live Verification Required
-Navigate to Skills section
-Show empty state or existing skills
-Confirm no hardcoded data
-Click "Add Skill" button
-Open modal with focus trap
-Confirm Tab cycles ONLY within modal
-Enter valid skill name (e.g., "Distributed Systems")
-Real-time char count updates
-Confirm validation feedback appears correctly
-Submit skill
-Show loading spinner → success toast
-Confirm POST to /api/v1/skills/submit returns 201
-Verify persistence
-Refresh page → skill still visible
-Confirm KV/D1 storage retained data
-Attempt duplicate submission
-Show appropriate error/validation
-Confirm idempotency or clear error message
-Press Escape in modal
-Modal closes, focus returns to trigger
-Confirm background content regains focus
-Journey C: Adversarial Security Validation (Live)
-Attack Vector
-Expected Defense
-Live Verification Required
-Send Authorization: Bearer RBU21CSE046
-401 Unauthorized
-Confirm forged roll number rejected
-Send unsigned JWT
-401 Unauthorized
-Confirm signature verification active
-Modify JWT payload (alg:none)
-401 Unauthorized
-Confirm algorithm validation enforced
-Append ?uid=ADMIN to API call
-Parameter ignored
-Confirm identity from token claims only
-Access /api/v1/student/profile without cookie
-401 Unauthorized
-Confirm session gate functional
-Rapid-fire requests (11th req/min)
-429 Too Many Requests
-Confirm rate limiting active
-Journey D: Accessibility & Responsive Validation
+Unified Directive: Enterprise Chat & Communication Subsystem Integration
+1. Role & Mission Context
+You are acting as Principal Backend Architect & Systems Engineer. Your mission is to integrate a production-grade, ₹0-cost-starting Chat Subsystem into CampusOS that shares identity with Student/Professor/Event/Admin modules while remaining fully replaceable by self-hosted infrastructure later.
+Target Repository: https://github.com/Gulshan-Singh-gs/CampusOs-rbu
+Current Foundation: v2.0.1 Auth (RS256 OIDC), Supabase PostgreSQL (RLS verified), Cloudflare Worker Edge Proxy.
+Critical Constraint: Chat must use the EXISTING user identity system. NO separate chat accounts. NO fake data. NO frontend-only messaging.
+2. Architectural Assessment Report (Pre-Implementation)
+Before writing code, you MUST audit the existing codebase against these requirements:
+Requirement
+Current State (v2.0.1)
+Conflict / Gap
+Resolution Strategy
+Single User Identity
+✅ JWT claims contain UID + role
+None
+Reuse users table from auth module
+RLS Security Model
+✅ Verified policies on academic tables
+Chat tables need new RLS policies
+Create chat_ prefixed policies using same RBAC model
+Service Abstraction
+⚠️ Partial (supabase.ts)
+No ChatService interface exists
+Build abstraction layer BEFORE UI components
+Realtime Infrastructure
+❌ Not configured
+Supabase Realtime not enabled
+Enable Realtime on messages table only
+Spam Protection
+️ IP rate limiting only
+No message-level flood protection
+Add DB trigger + application-layer throttling
+Self-Hosting Prep
+⚠️ Direct Supabase calls in Worker
+Tightly coupled to Supabase SDK
+Wrap all DB calls behind repository pattern
+Go/No-Go Decision: Proceed ONLY if users table schema supports multi-role profiles AND RLS verification passes for new chat tables. If conflicts exist, resolve them FIRST.
+3. Execution Phases (Strict Sequential Order)
+Phase 1: Database Schema & RLS Foundation
+Objective: Create normalized, secure chat schema that integrates with existing identity system.
+Create Tables (in supabase/migrations/009_chat_system.sql):
+sql
+
+12345678910111213141516171819202122232425262728293031323334353637383940414243444546
+Implement RLS Policies (CRITICAL - reuse existing RBAC patterns):
+sql
+
+123456789101112131415161718192021
+Verify Empirically: Test RLS as student/professor/admin/anon users. Document in docs/CHAT_RLS_VERIFICATION.md.
+Phase 2: Replaceable Service Abstraction Layer
+Objective: Decouple business logic from Supabase SDK. This is your self-hosting insurance policy.
+Create Repository Interface (src/lib/chat/repositories/ChatRepository.ts):
+typescript
+
+12345678
+Implement Supabase Adapter (src/lib/chat/repositories/SupabaseChatRepository.ts):
+Inject Supabase client via constructor (never import globally)
+All queries use parameterized statements
+Realtime subscription returns standardized Subscription interface
+Error handling maps Supabase errors to domain errors
+Create Domain Service (src/lib/chat/ChatService.ts):
+Depends ONLY on ChatRepository interface
+Implements business rules: spam detection, permission checks, retention enforcement
+Returns domain models, NOT database rows
+Example:
+typescript
+
+1234567891011121314
+Phase 3: Edge Worker Integration & Security Hardening
+Objective: Extend Cloudflare Worker to proxy chat operations securely.
+Add Chat Endpoints to _worker.js:
+POST /api/v1/chat/messages → Validates JWT → Calls ChatService.sendMessage() → Returns sanitized message
+GET /api/v1/chat/conversations → Returns user's conversations with unread counts
+POST /api/v1/chat/block → Enforces block at API level + DB
+POST /api/v1/chat/report → Creates moderation ticket
+Implement Application-Layer Spam Protection:
+Token bucket rate limiter per UID (not just IP)
+Message content validation (reject empty, excessive whitespace, URL-only messages)
+Flood detection: >5 messages in 10 seconds → temporary mute
+Configure Supabase Realtime Securely:
+Enable Realtime ONLY on messages table
+Set broadcast filter: conversation_id = ${user_conversations}
+NEVER expose service role key to frontend for Realtime
+Use RLS-enabled Realtime (Supabase respects policies on subscriptions)
+Phase 4: Frontend Integration via Abstraction
+Objective: UI consumes ChatService, never touches Supabase directly.
+Create React Hook (src/hooks/useChat.ts):
+typescript
+
+12345678910111213141516
+Implement Optimistic UI with Rollback:
+Show "Sending..." state immediately
+On success: confirm sent
+On failure: show error + retry button + preserve message text
+NEVER silently drop messages
+Pagination & Infinite Scroll:
+Load 30 messages initially
+Fetch older messages on scroll-up
+Cache previous pages in memory (not localStorage)
+Phase 5: Verification Protocol (MANDATORY)
 Test Case
-Expected Standard
-Live Verification Required
-Keyboard-only navigation
-All interactive elements reachable
-Confirm no keyboard traps outside modals
-Screen reader announcement
-Status badges read meaningfully
-Confirm role="status" + aria-label present
-Mobile viewport (375px)
-No horizontal overflow, tap targets ≥48px
-Confirm layout adapts correctly
-High contrast mode
-Text meets WCAG AAA ratios
-Confirm prefers-contrast: more styles apply
-Error states
-Announced to assistive tech
-Confirm error messages have aria-live="polite"
-4. Source Code vs. Live Behavior Cross-Reference Protocol
-For EVERY tested workflow, produce this comparison table:
-Component / Feature
-Source Code Intent (File:Line)
-Live Behavior Observed
-Match?
-Discrepancy Details
-Severity
-Auth Gate
-_worker.js:45 - verifyJwtCryptographically()
-Returns 401 for invalid tokens
-✅ YES
-None
-N/A
-Skill Storage
-_worker.js:112 - CAMPUSOS_KV.put()
-Data persists after refresh
-✅ YES
-None
-N/A
-Focus Trap
-useFocusTrap.ts:28 - confineTab()
-Tab escapes modal on mobile
-❌ NO
-Touch events bypass JS trap
-P1
-Privacy Toggle
-CampusPassportView.tsx:89 - showGpa state
-GPA hides visually but API still sends it
-️ PARTIAL
-Client-side only; server should filter
-P2
-Rate Limiter
-_worker.js:78 - RATE_LIMIT_WINDOW
-11th request returns 429
-✅ YES
-None
-N/A
-Severity Definitions:
-✅ YES: Perfect match between code intent and live behavior.
-⚠️ PARTIAL: Works but with limitations or incomplete implementation.
-❌ NO: Critical mismatch; live behavior contradicts code intent or security requirements.
-5. Required Deliverables
-5.1 Comprehensive E2E Test Report (docs/E2E_INTEGRATION_REPORT.md)
-Executive summary with Go/No-Go recommendation.
-Complete journey matrix results (A-D above).
-Source-vs-Live cross-reference table.
-Screenshot/video evidence of all critical flows.
-Network HAR files for authenticated sessions.
-5.2 Defect Triage List
-Categorize all findings by:
-BLOCKER: Prevents deployment (e.g., auth bypass, data loss).
-MAJOR: Significant UX/security gap requiring fix before launch.
-MINOR: Polish issue acceptable for post-launch patch.
-ENHANCEMENT: Future improvement, not blocking.
-5.3 Updated Production Readiness Assessment
-Revise CHECKLIST_FINAL_DEPLOYMENT_SIGNOFF.md with actual test outcomes. Mark items as:
-✅ VERIFIED (tested live)
-⚠️ CONDITIONAL (works with caveats)
-❌ FAILED (requires remediation)
-➖ NOT APPLICABLE
-5.4 Final Recommendation Statement
-Provide one of these definitive conclusions:
-"GO FOR DEPLOYMENT" – All critical paths validated, no blockers found.
-"CONDITIONAL GO" – Minor issues identified; deploy with documented workarounds.
-"NO-GO" – Critical defects discovered; remediation required before launch.
-6. Execution Constraints
-Use REAL test accounts provisioned in the university IdP. Do NOT use mock credentials.
-Test on ACTUAL devices where possible (mobile phone, tablet), not just browser emulation.
-Capture NETWORK TRAFFIC for every authenticated request to verify headers, tokens, and responses.
-DO NOT MODIFY PRODUCTION DATA. Use designated test UIDs and clean up submissions after testing.
-TIMEBOX: Complete all journeys within 4 hours. Prioritize Journey A and C if time-constrained.
-7. Execution Command
-Begin Journey A immediately. Start with anonymous access validation, then proceed through full auth flow. Capture all network traffic. After completing Journey A, immediately begin Journey C (adversarial tests) to confirm security holds under live conditions. Document EVERY discrepancy between source code and live behavior. Produce the complete E2E report with Go/No-Go recommendation.git 
+Expected Result
+Evidence Required
+RLS Isolation
+Student CANNOT read private chat of another student
+curl as Student A + query for Student B's private messages → 403/empty
+Block Enforcement
+Blocked user's messages invisible to blocker
+Send message → Block → Verify message hidden
+Spam Protection
+11th message in 60s rejected
+Script sending 11 messages → 429 on 11th
+Realtime Delivery
+Message appears <500ms on recipient device
+Timestamp comparison + network trace
+Service Abstraction
+No Supabase imports in UI components
+Grep src/features/chat/**/*.tsx for @supabase → 0 results
+Self-Hosting Prep
+Swap Supabase adapter for mock → UI still works
+Unit test with MockChatRepository
+Retention Policy
+Messages older than N days auto-deleted
+Cron job simulation + DB verification
+Error Resilience
+Network disconnect → queued messages → retry on reconnect
+DevTools offline mode test
+4. Deliverables Checklist
+supabase/migrations/009_chat_system.sql with verified RLS
+src/lib/chat/repositories/ChatRepository.ts (interface)
+src/lib/chat/repositories/SupabaseChatRepository.ts (adapter)
+src/lib/chat/ChatService.ts (domain logic)
+Updated _worker.js with chat endpoints + spam protection
+src/hooks/useChat.ts + UI components using abstraction
+docs/CHAT_RLS_VERIFICATION.md with empirical test results
+docs/CHAT_ARCHITECTURE_DECISIONS.md documenting trade-offs
+Integration tests covering auth, authorization, messaging, security
+Monitoring hooks for message volume, latency, failures
+5. Critical Warnings
+⚠️ NEVER bypass RLS in the Worker. Even though you have service role key, ALWAYS validate permissions at application layer FIRST. Service role is for system operations only, not user requests.
+️ DO NOT enable Realtime on conversations or users tables. Only messages needs realtime. Broadcasting conversation updates creates unnecessary load and privacy risks.
+️ Retention policies MUST be configurable. Hardcoding DELETE WHERE created_at < NOW() - INTERVAL '30 days' will cause compliance issues when university policy changes. Store retention days in conversations.metadata or admin settings.
+⚠️ Test with REAL authenticated users. Fake messages hide RLS bugs, spam vulnerabilities, and realtime delivery failures. Seed data is acceptable ONLY if clearly marked as dev-only and isolated from production.
+6. Execution Command
+Begin Phase 1 IMMEDIATELY. Create schema, implement RLS, verify empirically. Do NOT write a single line of frontend code until RLS is proven secure. This is infrastructure — correctness beats speed. Report architectural assessment findings before proceeding.

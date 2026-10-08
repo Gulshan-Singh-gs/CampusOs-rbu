@@ -344,6 +344,130 @@ function configureApiRoutes(server) {
       return;
     }
 
+    // Dev Chat Endpoints matching edge worker
+    if (!globalThis._devChatThrottle) {
+      globalThis._devChatThrottle = new Map();
+      globalThis._devMessages = [];
+      globalThis._devBlocks = new Set();
+    }
+
+    if (url.pathname === '/api/v1/chat/messages' && req.method === 'POST') {
+      const token = parseAuthToken(req);
+      if (!token) {
+        res.statusCode = 401;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Unauthorized', message: 'Token required.' }));
+        return;
+      }
+      const claims = verifyAndExtractClaims(token);
+      if (!claims || !claims.uid) {
+        res.statusCode = 401;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Unauthorized', message: 'Invalid token.' }));
+        return;
+      }
+
+      // Check flood limit (5 msgs in 10s)
+      const now = Date.now();
+      const timestamps = globalThis._devChatThrottle.get(claims.uid) || [];
+      const recent = timestamps.filter((t) => t > now - 10000);
+      if (recent.length >= 5) {
+        res.statusCode = 429;
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Retry-After', '10');
+        res.end(JSON.stringify({ error: 'Too Many Requests', message: 'Rate limit exceeded: Max 5 messages per 10s.' }));
+        return;
+      }
+      recent.push(now);
+      globalThis._devChatThrottle.set(claims.uid, recent);
+
+      const handleMsg = (body) => {
+        const content = typeof body.content === 'string' ? body.content.trim() : '';
+        if (!content) {
+          res.statusCode = 400;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'Bad Request', message: 'Content cannot be empty.' }));
+          return;
+        }
+        const msg = {
+          id: 'chat-msg-' + Math.random().toString(36).substring(2, 10),
+          conversationId: body.conversationId || 'default-room',
+          senderId: claims.uid,
+          senderName: claims.name || 'Student ' + claims.uid,
+          content,
+          messageType: body.messageType || 'text',
+          status: 'sent',
+          createdAt: new Date().toISOString(),
+        };
+        globalThis._devMessages.push(msg);
+        res.statusCode = 201;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(msg));
+      };
+
+      const chunks: any[] = [];
+      req.on('data', (chunk) => chunks.push(chunk));
+      req.on('end', () => {
+        try {
+          const body = JSON.parse(Buffer.concat(chunks).toString('utf-8') || '{}');
+          handleMsg(body);
+        } catch {
+          res.statusCode = 400;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'Bad Request', message: 'Invalid JSON payload.' }));
+        }
+      });
+      return;
+    }
+
+    if (url.pathname === '/api/v1/chat/conversations' && req.method === 'GET') {
+      const token = parseAuthToken(req);
+      if (!token) {
+        res.statusCode = 401;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Unauthorized', message: 'Token required.' }));
+        return;
+      }
+      const claims = verifyAndExtractClaims(token);
+      if (!claims || !claims.uid) {
+        res.statusCode = 401;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Unauthorized', message: 'Invalid token.' }));
+        return;
+      }
+
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(
+        JSON.stringify([
+          {
+            id: 'room-solar-drone-project',
+            type: 'group',
+            title: 'Project Match: Solar Autonomous Drone',
+            metadata: { retention_days: 14, is_encrypted: true },
+            unreadCount: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ])
+      );
+      return;
+    }
+
+    if (url.pathname === '/api/v1/chat/block' && req.method === 'POST') {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ success: true, message: 'User blocked.' }));
+      return;
+    }
+
+    if (url.pathname === '/api/v1/chat/report' && req.method === 'POST') {
+      res.statusCode = 201;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ success: true, status: 'pending' }));
+      return;
+    }
+
     next();
   });
 }

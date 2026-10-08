@@ -596,6 +596,267 @@ export default {
     }
 
     // -------------------------------------------------------------
+    // Phase 3 Chat APIs: Enterprise Chat & Communication Subsystem
+    // Edge Worker Proxy with Zero-Trust Authentication & Flood Guard
+    // -------------------------------------------------------------
+
+    // Token-bucket rate limiter per authenticated UID
+    const checkUidChatThrottling = (uid) => {
+      const now = Date.now();
+      const windowMs = 10 * 1000; // 10 seconds
+      const maxMsgs = 5;
+      if (!globalThis._chatUidThrottleMap) {
+        globalThis._chatUidThrottleMap = new Map();
+      }
+      const timestamps = globalThis._chatUidThrottleMap.get(uid) || [];
+      const recent = timestamps.filter((t) => t > now - windowMs);
+      if (recent.length >= maxMsgs) {
+        return false;
+      }
+      recent.push(now);
+      globalThis._chatUidThrottleMap.set(uid, recent);
+      return true;
+    };
+
+    // Global in-memory / KV state for chat subsystem proxy
+    if (!globalThis._edgeConversations) {
+      globalThis._edgeConversations = new Map();
+      globalThis._edgeMessages = new Map();
+      globalThis._edgeBlocks = new Set();
+      globalThis._edgeReports = [];
+    }
+
+    // POST /api/v1/chat/messages
+    if (url.pathname === '/api/v1/chat/messages' && request.method === 'POST') {
+      const authHeader = request.headers.get('Authorization') || '';
+      const cookieHeader = request.headers.get('Cookie') || '';
+      const token = parseAuthToken(authHeader, cookieHeader);
+
+      if (!token) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized', message: 'Authentication required to post message.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const claims = await verifyJwtCryptographically(token, env);
+      if (!claims || !claims.uid) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized', message: 'Invalid cryptographic token.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!checkUidChatThrottling(claims.uid)) {
+        return new Response(
+          JSON.stringify({
+            error: 'Too Many Requests',
+            message: 'Flood protection triggered: Maximum 5 messages per 10 seconds allowed. Cooldown active.',
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '10' } }
+        );
+      }
+
+      try {
+        const body = await request.json();
+        const content = typeof body.content === 'string' ? body.content.trim() : '';
+        const conversationId = body.conversationId || 'default-campus-room';
+
+        if (!content || content.length < 1) {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'Message content cannot be empty.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        if (content.length > 4000) {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'Message exceeds maximum length of 4000 characters.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const message = {
+          id: 'chat-msg-' + crypto.randomUUID().substring(0, 8),
+          conversationId,
+          senderId: claims.uid,
+          senderName: claims.name || 'Student ' + claims.uid,
+          content,
+          messageType: body.messageType || 'text',
+          status: 'sent',
+          createdAt: new Date().toISOString(),
+        };
+
+        const roomMsgs = globalThis._edgeMessages.get(conversationId) || [];
+        roomMsgs.push(message);
+        globalThis._edgeMessages.set(conversationId, roomMsgs);
+
+        // Durable persistence if KV available
+        if (env && env.CAMPUSOS_KV) {
+          await env.CAMPUSOS_KV.put(`chat:${conversationId}:${message.id}`, JSON.stringify(message));
+        }
+
+        return new Response(JSON.stringify(message), {
+          status: 201,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (err) {
+        return new Response(
+          JSON.stringify({ error: 'Bad Request', message: 'Invalid payload: ' + err.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // GET /api/v1/chat/conversations
+    if (url.pathname === '/api/v1/chat/conversations' && request.method === 'GET') {
+      const authHeader = request.headers.get('Authorization') || '';
+      const cookieHeader = request.headers.get('Cookie') || '';
+      const token = parseAuthToken(authHeader, cookieHeader);
+
+      if (!token) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized', message: 'Authentication required.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const claims = await verifyJwtCryptographically(token, env);
+      if (!claims || !claims.uid) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized', message: 'Invalid cryptographic token.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Default conversations accessible to authenticated student
+      const userConversations = [
+        {
+          id: 'room-solar-drone-project',
+          type: 'group',
+          title: 'Project Match: Solar Autonomous Drone',
+          metadata: { retention_days: 14, is_encrypted: true },
+          unreadCount: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: 'room-cse-general',
+          type: 'course_channel',
+          title: 'CSE Department Collaboration Hub',
+          metadata: { retention_days: 30, is_encrypted: true },
+          unreadCount: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+
+      return new Response(JSON.stringify(userConversations), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store, private' },
+      });
+    }
+
+    // POST /api/v1/chat/block
+    if (url.pathname === '/api/v1/chat/block' && request.method === 'POST') {
+      const authHeader = request.headers.get('Authorization') || '';
+      const cookieHeader = request.headers.get('Cookie') || '';
+      const token = parseAuthToken(authHeader, cookieHeader);
+
+      if (!token) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized', message: 'Authentication required.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const claims = await verifyJwtCryptographically(token, env);
+      if (!claims || !claims.uid) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized', message: 'Invalid token.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      try {
+        const body = await request.json();
+        const blockedUid = body.blockedUserId;
+        if (!blockedUid || blockedUid === claims.uid) {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'Invalid target user ID for block.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        globalThis._edgeBlocks.add(`${claims.uid}:${blockedUid}`);
+
+        return new Response(
+          JSON.stringify({ success: true, message: `User ${blockedUid} blocked successfully.` }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (err) {
+        return new Response(
+          JSON.stringify({ error: 'Bad Request', message: 'Invalid JSON payload.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /api/v1/chat/report
+    if (url.pathname === '/api/v1/chat/report' && request.method === 'POST') {
+      const authHeader = request.headers.get('Authorization') || '';
+      const cookieHeader = request.headers.get('Cookie') || '';
+      const token = parseAuthToken(authHeader, cookieHeader);
+
+      if (!token) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized', message: 'Authentication required.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const claims = await verifyJwtCryptographically(token, env);
+      if (!claims || !claims.uid) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized', message: 'Invalid token.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      try {
+        const body = await request.json();
+        const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
+        if (!reason || reason.length < 5) {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'Reason must be at least 5 characters.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const report = {
+          id: 'report-' + crypto.randomUUID().substring(0, 8),
+          reporterUid: claims.uid,
+          reportedUserId: body.reportedUserId,
+          reportedMessageId: body.reportedMessageId,
+          reason,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        };
+
+        globalThis._edgeReports.push(report);
+
+        return new Response(
+          JSON.stringify({ success: true, reportId: report.id, status: 'pending' }),
+          { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (err) {
+        return new Response(
+          JSON.stringify({ error: 'Bad Request', message: 'Invalid JSON payload.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // -------------------------------------------------------------
     // Route Gate: /passport and /passport/*
     // -------------------------------------------------------------
     if (url.pathname === '/passport' || url.pathname.startsWith('/passport/')) {
