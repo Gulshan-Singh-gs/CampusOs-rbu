@@ -4,10 +4,12 @@ import { useSessionStore } from '@/services/session/sessionStore';
 import { DEPARTMENTS } from '@/shared/lib/constants';
 import { Input, Select } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
-import { GraduationCap, ShieldCheck, Check } from 'lucide-react';
+import { GraduationCap, ShieldCheck, Check, KeyRound } from 'lucide-react';
 import type { Department } from '@/shared/types/app.types';
 import { ProfileInputSchema } from '@/shared/lib/validation';
 import { recordAuditLog } from '@/services/api/auditService';
+import { isFeatureEnabled } from '@/lib/featureFlags';
+import { authAdapter } from '@/lib/auth';
 
 export const OnboardingView: React.FC = () => {
   const navigate = useNavigate();
@@ -78,6 +80,30 @@ export const OnboardingView: React.FC = () => {
       </div>
 
       <div className="soft-card p-6 sm:p-8 space-y-6">
+        {isFeatureEnabled('ENABLE_REAL_SSO') && (
+          <div className="space-y-3 pb-6 border-b" style={{ borderColor: 'var(--surface-border)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary-500">
+              Institutional Single Sign-On
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              fullWidth
+              size="lg"
+              onClick={() => authAdapter.login()}
+              className="flex items-center justify-center gap-2 border-primary-500 text-primary-600 dark:text-primary-400"
+            >
+              <KeyRound className="w-4 h-4" />
+              Sign In with University OIDC SSO
+            </Button>
+            <div className="flex items-center gap-2 my-4">
+              <div className="flex-1 border-t" style={{ borderColor: 'var(--surface-border)' }} />
+              <span className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">or manual registration</span>
+              <div className="flex-1 border-t" style={{ borderColor: 'var(--surface-border)' }} />
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="Full Name"

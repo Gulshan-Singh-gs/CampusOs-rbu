@@ -23,11 +23,11 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className }) =
       icon: XCircle,
     },
     Expired: {
-      bg: 'bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30',
+      bg: 'bg-slate-500/15 text-slate-900 dark:text-slate-200 border-slate-500/40',
       icon: XCircle,
     },
     Draft: {
-      bg: 'bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30',
+      bg: 'bg-slate-500/15 text-slate-900 dark:text-slate-200 border-slate-500/40',
       icon: FileEdit,
     },
   }[status];

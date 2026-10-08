@@ -1,89 +1,78 @@
-1. Role Definition
-You are an Elite Full-Stack Security Engineer and Systems Architect. Your specialty is converting insecure frontend prototypes into cryptographically sound, enterprise-grade credentialing systems. You have deep expertise in W3C Verifiable Credentials, Edge Computing (Cloudflare Workers/Pages), OIDC/SAML SSO, and WCAG 2.2 AA accessibility standards.
-2. Mission Context
-The "Campus Passport" application (campusos-rbu-owv.pages.dev) has failed a critical security audit. It is currently a static SPA with hardcoded academic data and fake cryptographic signatures ("Security Theater").
-Your objective is NOT to add features. Your objective is to remediate all P0/P1 security vulnerabilities, establish a real backend trust anchor, and implement proper access controls before any new UX work occurs.
-3. Source of Truth: QA Audit Report
-Use the following defect matrix as your strict acceptance criteria. Do not mark a task complete unless the specific PoC vulnerability is neutralized.
-Defect ID
-Severity
-Core Issue
-Required Engineering Outcome
-SEC-01
-P0
-No Auth / Open Access
-Implement OIDC/SSO gate. /passport must return 401/302 without valid session.
-SEC-02
-P1
-Fake Crypto Signatures
-Remove static ed25519-valid strings. Implement server-side signing or remove claims entirely.
-SEC-03
-P1
-Client-Side IDOR / Spoofing
-Academic data MUST come from authenticated server response, never client state/URL params.
-SEC-04
-P2
-Missing Security Headers
-Deploy Cloudflare _headers with strict CSP, HSTS, X-Frame-Options.
-FUNC-01
-P2
-Bypassed Verification Queue
-Skill submission must POST to authenticated API endpoint with RBAC, not mutate local state.
-FUNC-02
-P2
-Dead Actions
-Disable/remove "Verify Signature", "Share Scoped Link" until backend supports them.
-A11Y-01
-P3
-Missing ARIA / Focus Trap
-Add role="status", fix color contrast, implement focus trapping in modals.
-4. Execution Phases (Strict Sequential Order)
-PHASE 1: Immediate Risk Mitigation (Stop the Bleeding)
-Execute these changes FIRST. Do not proceed to Phase 2 until committed.
-Strip Security Theater: Search codebase for ed25519, SHA256-RBU-PASSPORT-2026, Zero-Trust, and Cryptographic Verification. Replace with [Verification Pending Backend Integration] or remove entirely. Never display a verification status that isn't dynamically validated.
-Implement Security Headers: Create/update _headers file for Cloudflare Pages:
-
-123456
-Disable Dead Routes: Comment out or redirect all non-functional sidebar links (Social Graph, Squad Swipe, etc.) to a /coming-soon placeholder. Remove inert buttons ("Verify Public Key Signature").
-Sanitize Client State: Remove all hardcoded GPA, attendance, and SIS batch data from frontend bundles. Replace with loading skeletons that only populate after authenticated API response.
-PHASE 2: Authentication & Data Integrity Foundation
-Implement SSO Gate: Integrate OIDC/SAML provider (use generic @cloudflare/workers-oauth-provider or similar edge-compatible auth). Protect /passport route at the edge/middleware level.
-Create Secure Data Endpoint: Build a serverless function (/api/v1/student/profile) that:
-Validates JWT/session token
-Extracts UID from token claims (NEVER from URL/query params)
-Fetches academic record from secure data source (mock DB acceptable for now, but architecture must be server-authoritative)
-Returns signed/validated response
-Eliminate IDOR: Ensure changing URL parameters while authenticated returns either the authorized user's data or a 403 error. Test by manipulating UID in dev tools.
-PHASE 3: Functional Integrity & Accessibility
-Wire Skill Submission to Backend: Replace local state mutation with authenticated POST to /api/v1/skills/submit. Return pending status. Display "Pending Department Review" badge instead of instant "Coursework Verified".
-Fix Modal Focus Trap: Implement proper focus management in skill submission modal. Tab cycling must stay within modal. Escape key must close. Background must be inert (aria-hidden="true").
-Add Semantic ARIA: All status badges need role="status" and descriptive aria-label. Green verification dots need aria-hidden="true" with adjacent screen-reader-only text.
-Fix Color Contrast: Update status pill colors to meet WCAG AA 4.5:1 ratio. Test with axe-core.
-PHASE 4: Verification & Testing Protocol
-After implementing each phase, you MUST:
-Run automated security scan (e.g., npm audit, CSP evaluator).
-Verify SEC-03 PoC is broken (attempt UID spoofing → should fail).
-Verify SEC-01 PoC is broken (access /passport unauthenticated → should redirect).
-Run Lighthouse accessibility audit → target ≥90.
-Document what was changed and how it maps to defect IDs.
-5. Technical Constraints & Stack Assumptions
-Platform: Cloudflare Pages + Workers (Edge Runtime compatible)
-Framework: Assume React/Vue/Svelte SPA based on audit. Adapt to actual framework detected.
-Auth: Edge-compatible OIDC. No Node.js-only passport strategies.
-Crypto: If implementing real signatures later, use Web Crypto API or Cloudflare Workers crypto bindings. NEVER roll custom crypto.
-Data: Server-authoritative only. LocalStorage/sessionStorage may cache but NEVER serve as source of truth for credentials.
-6. Output Requirements
-For each phase, provide:
-Files Modified/Created with exact paths
-Code Changes with inline comments explaining security rationale
-Defect Resolution Mapping (e.g., "SEC-03 resolved by extracting UID from JWT claim in /api/v1/student/profile")
-Verification Steps (exact commands/curl requests to prove fix)
-Known Limitations (what still needs backend infrastructure not yet available)
-7. Critical Warnings
-⚠️ DO NOT add new UI features until P0/P1 defects are resolved.
-⚠️ DO NOT create mock verification that looks real. Placeholder text must be obviously incomplete.
-⚠️ DO NOT store secrets, private keys, or SIS credentials in frontend code or environment variables exposed to browser.
-⚠️ DO NOT assume any existing component is safe. Treat entire codebase as untrusted until audited.
-8. Execution Command
-Begin with PHASE 1: Immediate Risk Mitigation. Analyze the current codebase structure first, then execute Phase 1 changes. After completing Phase 1, pause and output a summary of changes made, files modified, and verification results. Wait for confirmation before proceeding to Phase 2.
-Start now. Read the codebase. Execute Phase 1.
+Prompt for Coding AI Agent: Phase 3 - Production Deployment & Institutional Onboarding
+1. Context & Trigger
+Previous Status: Phase 2.5 complete. Auth adapter OIDC-ready. Accessibility WCAG 2.1 AA compliant. Backend secure and tested. 17/17 tests passing.
+Current State: Application is technically production-ready but deployed on *.pages.dev with mock auth. University IT has not yet provided SSO credentials or custom domain.
+2. Mission Objective
+Prepare the application for live institutional deployment by:
+Creating comprehensive deployment documentation for University IT.
+Implementing feature flags for gradual rollout.
+Adding production monitoring and observability hooks.
+Generating final compliance artifacts (security, accessibility, privacy).
+DO NOT add new features. DO NOT modify core architecture. DO prepare for handoff to University IT and live users.
+3. Execution Tasks (Strict Sequence)
+Task 1: Create University IT Deployment Handbook
+Generate docs/DEPLOYMENT_GUIDE.md containing:
+Step-by-step OIDC client registration instructions for Keycloak/Entra ID/Shibboleth.
+Exact environment variables required (VITE_AUTH_PROVIDER, VITE_OIDC_ISSUER_URL, etc.).
+Cloudflare Pages configuration checklist (secrets, custom domain, DNS).
+Backend JWKS verification setup with university IdP public keys.
+Rollback procedure if SSO integration fails.
+Contact information for CampusOS dev team support.
+Task 2: Implement Feature Flags for Gradual Rollout
+Create src/lib/featureFlags.ts:
+Define flags: ENABLE_REAL_SSO, ENABLE_SKILL_SUBMISSION, ENABLE_HONORS_VERIFICATION.
+Read flags from environment variable FEATURE_FLAGS (JSON string).
+Wrap SSO login button with ENABLE_REAL_SSO check; show mock login if disabled.
+Wrap skill submission UI with ENABLE_SKILL_SUBMISSION check.
+Add admin debug panel (dev-only) to toggle flags at runtime for testing.
+Task 3: Add Production Observability Hooks
+Create src/lib/telemetry.ts:
+Structured logging for auth events (login success/failure, logout, token refresh).
+Error boundary capturing unhandled exceptions with stack traces.
+Performance metrics collection (API latency, LCP, FID) sent to analytics endpoint.
+Privacy-compliant: no PII in logs; all data anonymized.
+Console warnings in dev; silent in prod unless error.
+Task 4: Generate Compliance Artifacts
+Create docs/compliance/ directory with:
+SECURITY_AUDIT_REPORT.md: Summary of all resolved defects (SEC-01 through SEC-04) with evidence links.
+ACCESSIBILITY_CONFORMANCE_REPORT.md: WCAG 2.1 AA compliance statement with contrast ratios and focus trap verification.
+PRIVACY_IMPACT_ASSESSMENT.md: Data flow diagram, PII handling policy, retention schedule, user rights (access/delete/correct).
+THIRD_PARTY_DEPENDENCIES.md: List of all npm packages with license types and security audit status.
+Task 5: Final Pre-Deployment Checklist
+Create CHECKLIST_PRODUCTION_DEPLOYMENT.md:
+Custom domain campusos.rayatbahrauniversity.edu.in configured in Cloudflare DNS
+SSL certificate auto-provisioned via Cloudflare
+Environment secrets set in Cloudflare Pages Dashboard
+Feature flags configured for initial rollout (SSO disabled until IT confirms)
+Monitoring alerts configured for 4xx/5xx error rate spikes
+Backup/restore procedure documented for student data
+User acceptance testing sign-off from Registrar Office
+Privacy policy published and linked in footer
+Accessibility statement published and linked in footer
+4. Verification Protocol (MANDATORY)
+Deliverable
+Acceptance Criteria
+Evidence Required
+Deployment Handbook
+IT staff can follow steps without developer assistance
+Peer review by non-dev stakeholder
+Feature Flags
+Toggling flag disables/enables feature without code change
+Screenshot of debug panel + UI state change
+Telemetry
+Auth events logged; no PII in console; errors captured
+Log output sample + error boundary test
+Compliance Docs
+All four documents complete with accurate data
+Document review checklist
+Pre-Deploy Checklist
+All items actionable; no vague statements
+Checklist completeness audit
+5. Output Requirements
+All documentation files created in /docs/ with proper markdown formatting.
+Feature flag implementation with debug panel (dev-only).
+Telemetry module with privacy-compliant logging.
+Compliance artifacts ready for institutional review.
+Final summary report confirming Phase 3 readiness.
+6. Execution Command
+Begin Task 1 immediately. Do not proceed to Task 2 until Deployment Handbook is complete and reviewed. Treat this as preparing a mission-critical system for institutional adoption — clarity and completeness are non-negotiable.

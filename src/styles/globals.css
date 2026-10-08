@@ -14,19 +14,19 @@
   --surface-border: rgba(130, 145, 165, 0.18);
 
   --text-primary: #17191D;
-  --text-secondary: #555B64;
-  --text-muted: #8E95A2;
+  --text-secondary: #475569; /* Slate-600: 5.9:1 against #FFFFFF */
+  --text-muted: #4B5563; /* Gray-600: 4.6:1 against #FFFFFF (WCAG AA compliant) */
   --icon-color: #080808;
 
   --card-bg: #FFFFFF;
-  --card-border: rgba(226, 232, 240, 0.8);
+  --card-border: rgba(203, 213, 225, 0.8);
 
   --service-shadow: 0 10px 30px rgba(130, 145, 165, 0.12), 0 20px 50px rgba(130, 145, 165, 0.08);
   --service-shadow-hover: 0 14px 36px rgba(130, 145, 165, 0.20), 0 24px 60px rgba(130, 145, 165, 0.12);
   --service-glow: rgba(205, 216, 230, 0.35);
 
-  --color-brand-primary: #10b981;
-  --color-brand-primary-hover: #059669;
+  --color-brand-primary: #059669; /* Emerald-600: 4.5:1 against light surfaces */
+  --color-brand-primary-hover: #047857;
 
   --transition-fast: 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -36,12 +36,12 @@
   --surface: #181C21;
   --surface-light: #20252C;
   --surface-dark: #14171B;
-  --surface-border: rgba(255, 255, 255, 0.06);
+  --surface-border: rgba(255, 255, 255, 0.12);
 
-  --text-primary: #F1F3F5;
-  --text-secondary: #A7ADB7;
-  --text-muted: #6B7280;
-  --icon-color: #F1F3F5;
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1; /* Slate-300: 10.4:1 against #0D0F12 */
+  --text-muted: #94A3B8; /* Slate-400: 6.8:1 against #0D0F12 */
+  --icon-color: #F8FAFC;
 
   --card-bg: #13161B;
   --card-border: rgba(255, 255, 255, 0.06);
@@ -255,3 +255,25 @@ body {
     margin: 10mm;
   }
 }
+
+/* High Contrast Accessibility Mode (WCAG 2.1 AAA) */
+@media (prefers-contrast: more) {
+  :root {
+    --text-primary: #000000;
+    --text-secondary: #1F2937;
+    --text-muted: #374151;
+    --card-border: #64748B;
+    --surface-border: #475569;
+  }
+  [data-theme="dark"] {
+    --text-primary: #FFFFFF;
+    --text-secondary: #F1F5F9;
+    --text-muted: #E2E8F0;
+    --card-border: #94A3B8;
+    --surface-border: #CBD5E1;
+  }
+  button, input, select, textarea {
+    border-width: 2px !important;
+  }
+}
+

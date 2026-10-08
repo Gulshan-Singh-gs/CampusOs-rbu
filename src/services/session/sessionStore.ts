@@ -42,14 +42,22 @@ export const useSessionStore = create<SessionState>((set) => {
     },
 
     clearSession: async () => {
-      // 1. Sign out from Supabase Auth
+      // 1. Sign out from Auth Adapter (triggers POST /api/v1/auth/logout & cookie clearing)
+      try {
+        const { authAdapter } = await import('@/lib/auth');
+        await authAdapter.logout();
+      } catch (err) {
+        console.warn('AuthAdapter logout notice:', err);
+      }
+
+      // 2. Sign out from Supabase Auth if active
       try {
         await supabase.auth.signOut();
       } catch (err) {
         console.warn('Supabase signOut notice:', err);
       }
 
-      // 2. Clear all sensitive account caches to prevent cross-account workstation leakage
+      // 3. Clear all sensitive account caches to prevent cross-account workstation leakage
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(APPS_STORAGE_KEY);
       localStorage.removeItem(RSVPS_STORAGE_KEY);

@@ -4,6 +4,7 @@ import { AppShell } from '@/shared/layout/AppShell';
 import { ErrorBoundary } from '@/shared/ui/ErrorBoundary';
 import { RequireAuth } from '@/shared/ui/RequireAuth';
 import { useSessionStore } from '@/services/session/sessionStore';
+import { FeatureFlagsDebugPanel } from '@/shared/ui/FeatureFlagsDebugPanel';
 
 // Code-split route modules for maximum free-tier bandwidth optimization & instant mobile loads
 const EventsFeedView = lazy(() =>
@@ -110,6 +111,7 @@ export const App: React.FC = () => {
             </Routes>
           </Suspense>
         </AppShell>
+        <FeatureFlagsDebugPanel />
       </ErrorBoundary>
     </BrowserRouter>
   );

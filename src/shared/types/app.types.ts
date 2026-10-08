@@ -99,6 +99,8 @@ export interface StudentSkill {
   readonly endorsementCount: number;
   readonly endorsedBy?: string;
   readonly evidenceUrl?: string;
+  readonly status?: 'pending_review' | 'verified' | 'rejected';
+  readonly submittedAt?: string;
 }
 
 export interface StudentAchievement {

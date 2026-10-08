@@ -1,6 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
+import { trackError } from '@/lib/telemetry';
 
 interface Props {
   children: ReactNode;
@@ -23,6 +24,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    trackError(error, errorInfo.componentStack || undefined);
     console.error('CampusOS Uncaught View Error:', error, errorInfo);
   }
 

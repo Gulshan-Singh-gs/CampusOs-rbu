@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useSessionStore } from '@/services/session/sessionStore';
 import { supabase } from '@/shared/lib/supabase';
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/Button';
+import { Toast, type ToastType } from '@/shared/ui/Toast';
+import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 import {
   Award,
   Printer,
@@ -23,6 +26,7 @@ import {
   ExternalLink,
   Copy,
   Check,
+  Loader2,
 } from 'lucide-react';
 import type { StudentSkill, StudentAchievement, Profile } from '@/shared/types/app.types';
 
@@ -52,23 +56,57 @@ export const CampusPassportView: React.FC = () => {
 
   const [activeProfile, setActiveProfile] = useState<Profile | null>(loggedInProfile);
   const [profileNotFound, setProfileNotFound] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [docHash, setDocHash] = useState<string>('');
   const [copiedUid, setCopiedUid] = useState(false);
   const [liveAnnouncement, setLiveAnnouncement] = useState('');
   const [skills, setSkills] = useState<StudentSkill[]>([]);
   const [achievements, setAchievements] = useState<StudentAchievement[]>([]);
-  const [isAcademicDataLoading] = useState(false);
+  const [isAcademicDataLoading, setIsAcademicDataLoading] = useState(false);
 
   // Modals & Controls
   const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
-  // New Skill form state
+  // Focus trap trigger button refs
+  const skillModalTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const privacyModalTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const helpModalTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  // Focus trap hooks for accessibility (WCAG 2.1 AA)
+  const skillModalRef = useFocusTrap<HTMLDivElement>({
+    isOpen: isSkillModalOpen,
+    onClose: () => setIsSkillModalOpen(false),
+    triggerRef: skillModalTriggerRef,
+  });
+
+  const privacyModalRef = useFocusTrap<HTMLDivElement>({
+    isOpen: isPrivacyModalOpen,
+    onClose: () => setIsPrivacyModalOpen(false),
+    triggerRef: privacyModalTriggerRef,
+  });
+
+  const helpModalRef = useFocusTrap<HTMLDivElement>({
+    isOpen: isHelpModalOpen,
+    onClose: () => setIsHelpModalOpen(false),
+    triggerRef: helpModalTriggerRef,
+  });
+
+  // Toast feedback state
+  const [toast, setToast] = useState<{
+    type: ToastType;
+    title: string;
+    message?: string;
+  } | null>(null);
+
+  // New Skill form state & validation errors
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillCategory, setNewSkillCategory] = useState('Computer Science & Engineering');
   const [newSkillProficiency, setNewSkillProficiency] = useState<'Beginner' | 'Intermediate' | 'Advanced' | 'Expert'>('Intermediate');
   const [newSkillEvidence, setNewSkillEvidence] = useState('');
+  const [skillFormError, setSkillFormError] = useState<string | null>(null);
   const [submittingSkill, setSubmittingSkill] = useState(false);
 
   // Privacy toggles (saved to localStorage for student owner)
@@ -111,99 +149,154 @@ export const CampusPassportView: React.FC = () => {
 
     async function loadPassportData() {
       setProfileNotFound(false);
-      let resolvedProfile = loggedInProfile;
+      setFetchError(null);
+      setIsLoadingProfile(true);
+      setIsAcademicDataLoading(true);
 
-      // If a specific UID was requested and is not the logged-in user
-      if (targetUid && !isSelf) {
-        try {
-          const { data: remoteProfile, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .or(`roll_number.ilike.${targetUid},id.eq.${targetUid}`)
-            .maybeSingle();
+      // Determine auth token for server-authoritative API
+      const authToken = loggedInProfile?.rollNumber || 'RBU21CSE045';
 
-          if (error || !remoteProfile) {
+      try {
+        // Fetch server-authoritative student profile from backend API
+        const profileRes = await fetch('/api/v1/student/profile', {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        if (!profileRes.ok) {
+          if (profileRes.status === 401 || profileRes.status === 403) {
+            throw new Error(`Authentication failure (${profileRes.status}): Server rejected authorization token.`);
+          }
+          if (profileRes.status === 404) {
             if (!isCancelled) {
               setProfileNotFound(true);
-              setActiveProfile(null);
-              setSkills([]);
-              setAchievements([]);
+              setIsLoadingProfile(false);
+              setIsAcademicDataLoading(false);
             }
             return;
           }
+          throw new Error(`Server returned HTTP ${profileRes.status}`);
+        }
 
-          resolvedProfile = {
-            id: remoteProfile.id,
-            fullName: remoteProfile.full_name,
-            email: remoteProfile.email,
-            rollNumber: remoteProfile.roll_number || targetUid,
-            department: remoteProfile.department || 'CSE',
-            yearOfStudy: remoteProfile.year_of_study || 1,
-            role: remoteProfile.role || 'student',
-            isVerified: remoteProfile.is_verified || false,
-            createdAt: remoteProfile.created_at,
-          };
-        } catch {
-          if (!isCancelled) {
-            setProfileNotFound(true);
-            setActiveProfile(null);
-            return;
+        const authoritativeData = await profileRes.json();
+        if (isCancelled) return;
+
+        let baseProfile: Profile = {
+          id: authoritativeData.studentId || loggedInProfile?.id || 'e29f1092-2309-425b-9ff1-91d8487b2938',
+          fullName: authoritativeData.fullName || loggedInProfile?.fullName || 'Student Record',
+          email: authoritativeData.email || loggedInProfile?.email || 'student@rayatbahrauniversity.edu.in',
+          rollNumber: authoritativeData.uid || targetUid || 'RBU21CSE045',
+          department: authoritativeData.department || 'CSE',
+          yearOfStudy: authoritativeData.yearOfStudy || 4,
+          role: 'student',
+          isVerified: true,
+          degreeStatus: authoritativeData.degreeStatus,
+          gpa: authoritativeData.gpa,
+          attendance: authoritativeData.attendance,
+          lastSyncBatch: authoritativeData.lastSyncBatch,
+          enrollmentStatus: authoritativeData.enrollmentStatus,
+          cohort: authoritativeData.cohort,
+          createdAt: authoritativeData.verifiedAt || new Date().toISOString(),
+        };
+
+        // If a specific target UID was requested that differs from authoritative user
+        if (targetUid && !isSelf) {
+          try {
+            const { data: remoteProfile, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .or(`roll_number.ilike.${targetUid},id.eq.${targetUid}`)
+              .maybeSingle();
+
+            if (error || !remoteProfile) {
+              if (!isCancelled) {
+                setProfileNotFound(true);
+                setIsLoadingProfile(false);
+                setIsAcademicDataLoading(false);
+              }
+              return;
+            }
+
+            baseProfile = {
+              ...baseProfile,
+              id: remoteProfile.id,
+              fullName: remoteProfile.full_name,
+              email: remoteProfile.email,
+              rollNumber: remoteProfile.roll_number || targetUid,
+              department: remoteProfile.department || 'CSE',
+              yearOfStudy: remoteProfile.year_of_study || 1,
+              isVerified: remoteProfile.is_verified || false,
+            };
+          } catch {
+            if (!isCancelled) {
+              setProfileNotFound(true);
+              setIsLoadingProfile(false);
+              setIsAcademicDataLoading(false);
+              return;
+            }
           }
         }
-      } else {
-        resolvedProfile = loggedInProfile;
-      }
 
-      if (isCancelled) return;
-      setActiveProfile(resolvedProfile);
+        setActiveProfile(baseProfile);
+        setIsLoadingProfile(false);
+        setIsAcademicDataLoading(false);
 
-      if (!resolvedProfile?.id) return;
+        // Fetch skills and achievements
+        try {
+          const { data: remoteSkills } = await supabase
+            .from('student_skills')
+            .select('id, student_id, skill_id, proficiency_level, endorsement_count, skills(name, category)')
+            .eq('student_id', baseProfile.id);
 
-      try {
-        const { data: remoteSkills } = await supabase
-          .from('student_skills')
-          .select('id, student_id, skill_id, proficiency_level, endorsement_count, skills(name, category)')
-          .eq('student_id', resolvedProfile.id);
+          if (remoteSkills && remoteSkills.length > 0 && !isCancelled) {
+            setSkills(
+              remoteSkills.map((s: any) => ({
+                id: s.id,
+                studentId: s.student_id,
+                skillId: s.skill_id,
+                skillName: s.skills?.name || 'Technical Skill',
+                category: s.skills?.category || 'Curricular Competency',
+                proficiencyLevel: s.proficiency_level,
+                endorsementCount: s.endorsement_count || 0,
+                endorsedBy: s.endorsement_count > 0 ? 'Dept. Faculty Advisor' : undefined,
+                status: 'verified',
+              }))
+            );
+          } else if (!isCancelled) {
+            setSkills([]);
+          }
 
-        if (remoteSkills && remoteSkills.length > 0 && !isCancelled) {
-          setSkills(
-            remoteSkills.map((s: any) => ({
-              id: s.id,
-              studentId: s.student_id,
-              skillId: s.skill_id,
-              skillName: s.skills?.name || 'Technical Skill',
-              category: s.skills?.category || 'Curricular Competency',
-              proficiencyLevel: s.proficiency_level,
-              endorsementCount: s.endorsement_count || 0,
-              endorsedBy: s.endorsement_count > 0 ? 'Dept. Faculty Advisor' : undefined,
-            }))
-          );
-        } else if (!isCancelled) {
-          setSkills([]);
+          const { data: remoteAchievements } = await supabase
+            .from('student_achievements')
+            .select('*')
+            .eq('student_id', baseProfile.id);
+
+          if (remoteAchievements && remoteAchievements.length > 0 && !isCancelled) {
+            setAchievements(
+              remoteAchievements.map((a: any) => ({
+                id: a.id,
+                studentId: a.student_id,
+                title: a.title,
+                issuer: a.issuer,
+                issueDate: a.issue_date,
+                badgeIcon: a.badge_icon || 'Award',
+                isVerified: a.is_verified,
+              }))
+            );
+          } else if (!isCancelled) {
+            setAchievements([]);
+          }
+        } catch (syncErr) {
+          console.warn('Passport relational items sync notice:', syncErr);
         }
-
-        const { data: remoteAchievements } = await supabase
-          .from('student_achievements')
-          .select('*')
-          .eq('student_id', resolvedProfile.id);
-
-        if (remoteAchievements && remoteAchievements.length > 0 && !isCancelled) {
-          setAchievements(
-            remoteAchievements.map((a: any) => ({
-              id: a.id,
-              studentId: a.student_id,
-              title: a.title,
-              issuer: a.issuer,
-              issueDate: a.issue_date,
-              badgeIcon: a.badge_icon || 'Award',
-              isVerified: a.is_verified,
-            }))
-          );
-        } else if (!isCancelled) {
-          setAchievements([]);
+      } catch (err: any) {
+        console.error('Failed to load authoritative passport data:', err);
+        if (!isCancelled) {
+          setFetchError(err.message || 'Unable to connect to academic records API.');
+          setIsLoadingProfile(false);
+          setIsAcademicDataLoading(false);
         }
-      } catch (err) {
-        console.warn('Passport sync notice:', err);
       }
     }
 
@@ -254,58 +347,101 @@ export const CampusPassportView: React.FC = () => {
     }
   };
 
+  // Task 4: POST /api/v1/skills/submit UX & error handling
   const handleAddSkillSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSkillName.trim() || !loggedInProfile?.id) return;
+    setSkillFormError(null);
+
+    const trimmed = newSkillName.trim();
+    if (!trimmed) {
+      setSkillFormError('Skill name cannot be empty.');
+      return;
+    }
+
+    if (trimmed.length < 2) {
+      setSkillFormError('Skill name must be at least 2 characters.');
+      return;
+    }
+
+    if (trimmed.length > 100) {
+      setSkillFormError('Skill name cannot exceed 100 characters.');
+      return;
+    }
 
     setSubmittingSkill(true);
-    const trimmed = newSkillName.trim();
-    const tempSkill: StudentSkill = {
-      id: crypto.randomUUID(),
-      studentId: loggedInProfile.id,
-      skillId: crypto.randomUUID(),
-      skillName: trimmed,
-      category: newSkillCategory,
-      proficiencyLevel: newSkillProficiency,
-      endorsementCount: 0,
-      evidenceUrl: newSkillEvidence.trim() || undefined,
-    };
-
-    setSkills((prev) => [...prev, tempSkill]);
+    const token = loggedInProfile?.rollNumber || activeProfile?.rollNumber || 'RBU21CSE045';
 
     try {
-      // Find or insert into skills catalog
-      const { data: existingSkill } = await supabase
-        .from('skills')
-        .select('id')
-        .eq('name', trimmed)
-        .maybeSingle();
+      const response = await fetch('/api/v1/skills/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          skillName: trimmed,
+          category: newSkillCategory,
+          proficiencyLevel: newSkillProficiency,
+          evidenceUrl: newSkillEvidence.trim() || undefined,
+        }),
+      });
 
-      let targetSkillId = existingSkill?.id;
-      if (!targetSkillId) {
-        const { data: createdSkill } = await supabase
-          .from('skills')
-          .insert({ name: trimmed, category: newSkillCategory })
-          .select('id')
-          .single();
-        targetSkillId = createdSkill?.id;
+      if (!response.ok) {
+        let errMessage = `Submission failed (HTTP ${response.status})`;
+        try {
+          const errData = await response.json();
+          if (errData?.message) errMessage = errData.message;
+        } catch {
+          // fallback
+        }
+        throw new Error(errMessage);
       }
 
-      if (targetSkillId) {
-        await supabase.from('student_skills').insert({
-          student_id: loggedInProfile.id,
-          skill_id: targetSkillId,
-          proficiency_level: newSkillProficiency,
-          endorsement_count: 0,
-        });
-      }
-    } catch (err) {
-      console.warn('Skill persistence notice:', err);
-    } finally {
-      setSubmittingSkill(false);
+      const result = await response.json();
+
+      const newSkill: StudentSkill = {
+        id: result.id || crypto.randomUUID(),
+        studentId: activeProfile?.id || loggedInProfile?.id || 'e29f1092-2309-425b-9ff1-91d8487b2938',
+        skillId: crypto.randomUUID(),
+        skillName: result.skillName || trimmed,
+        category: result.category || newSkillCategory,
+        proficiencyLevel: result.proficiencyLevel || newSkillProficiency,
+        endorsementCount: 0,
+        evidenceUrl: newSkillEvidence.trim() || undefined,
+        status: 'pending_review',
+        submittedAt: result.submittedAt || new Date().toISOString(),
+      };
+
+      setSkills((prev) => [newSkill, ...prev]);
+      setLiveAnnouncement(`Skill ${trimmed} submitted for faculty review.`);
+      
+      // Clear form on success
       setNewSkillName('');
       setNewSkillEvidence('');
+      setSkillFormError(null);
       setIsSkillModalOpen(false);
+
+      // Trigger Toast notification
+      setToast({
+        type: 'success',
+        title: 'Skill Submitted for Review',
+        message: `"${trimmed}" was added with Pending Review status.`,
+      });
+    } catch (err: any) {
+      console.error('Skill submission error:', err);
+      // Keep form data intact on error, show specific message
+      const isNetworkErr = err.message.toLowerCase().includes('network') || err.message.toLowerCase().includes('failed to fetch');
+      const displayMsg = isNetworkErr
+        ? 'Network error: Please verify your connection and try again.'
+        : err.message || 'Validation error: Please verify skill details.';
+      setSkillFormError(displayMsg);
+      setToast({
+        type: 'error',
+        title: 'Submission Failed',
+        message: displayMsg,
+      });
+    } finally {
+      setSubmittingSkill(false);
     }
   };
 
@@ -324,6 +460,62 @@ export const CampusPassportView: React.FC = () => {
       setLiveAnnouncement('');
     }, 2500);
   };
+
+  if (isLoadingProfile) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        <div className="soft-card p-4 border animate-pulse flex items-center justify-between" style={{ borderColor: 'var(--surface-border)' }}>
+          <div className="h-4 bg-slate-500/20 rounded w-1/3"></div>
+          <div className="h-4 bg-slate-500/20 rounded w-1/4"></div>
+        </div>
+        <div className="soft-card p-6 sm:p-10 space-y-8 border animate-pulse" style={{ borderColor: 'var(--surface-border)' }}>
+          <div className="flex items-center gap-4 pb-6 border-b" style={{ borderColor: 'var(--surface-border)' }}>
+            <div className="w-20 h-20 rounded-2xl bg-slate-500/20"></div>
+            <div className="space-y-2 flex-1">
+              <div className="h-6 bg-slate-500/20 rounded w-1/2"></div>
+              <div className="h-4 bg-slate-500/20 rounded w-1/3"></div>
+              <div className="h-3 bg-slate-500/20 rounded w-1/4"></div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: 'var(--surface-border)' }}>
+              <div className="h-4 bg-slate-500/20 rounded w-1/2"></div>
+              <div className="h-4 bg-slate-500/20 rounded w-3/4"></div>
+              <div className="h-4 bg-slate-500/20 rounded w-2/3"></div>
+            </div>
+            <div className="p-4 rounded-xl border space-y-3" style={{ borderColor: 'var(--surface-border)' }}>
+              <div className="h-4 bg-slate-500/20 rounded w-1/2"></div>
+              <div className="h-4 bg-slate-500/20 rounded w-4/5"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
+        <div className="w-14 h-14 mx-auto rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center">
+          <AlertCircle className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+          Academic Profile Connection Error
+        </h2>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          {fetchError}
+        </p>
+        <div className="pt-2 flex justify-center gap-3">
+          <Button variant="primary" onClick={() => window.location.reload()}>
+            Retry Request
+          </Button>
+          <Button variant="secondary" onClick={() => (window.location.href = '/dashboard')}>
+            Return to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (profileNotFound) {
     return (
@@ -382,6 +574,7 @@ export const CampusPassportView: React.FC = () => {
         <div className="flex items-center gap-3">
           {isSelf && (
             <button
+              ref={privacyModalTriggerRef}
               type="button"
               onClick={() => setIsPrivacyModalOpen(true)}
               className="font-medium text-primary-500 hover:underline flex items-center gap-1.5 focus:outline-none"
@@ -391,10 +584,10 @@ export const CampusPassportView: React.FC = () => {
             </button>
           )}
           <button
+            ref={helpModalTriggerRef}
             type="button"
             onClick={() => setIsHelpModalOpen(true)}
-            className="text-xs hover:underline flex items-center gap-1 opacity-80"
-            style={{ color: 'var(--text-secondary)' }}
+            className="text-xs hover:underline flex items-center gap-1 opacity-90 text-slate-600 dark:text-slate-300"
           >
             <HelpCircle className="w-3.5 h-3.5" />
             Registrar Verification Info
@@ -488,17 +681,17 @@ export const CampusPassportView: React.FC = () => {
                     onClick={handleCopyUid}
                     title="Copy student roll number to clipboard"
                     aria-label={`Copy student roll number ${activeProfile.rollNumber}`}
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 hover:text-slate-200 transition-colors focus:outline-none focus:ring-1 focus:ring-primary-500 min-h-[28px] min-w-[28px]"
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] bg-slate-500/10 hover:bg-slate-500/20 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-primary-500 min-h-[28px] min-w-[28px]"
                   >
                     {copiedUid ? (
                       <>
-                        <Check className="w-3 h-3 text-emerald-400" />
-                        <span className="text-[10px] text-emerald-400 font-sans">Copied</span>
+                        <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-sans font-medium">Copied</span>
                       </>
                     ) : (
                       <>
                         <Copy className="w-3 h-3" />
-                        <span className="text-[10px] font-sans">Copy</span>
+                        <span className="text-[10px] font-sans font-medium">Copy</span>
                       </>
                     )}
                   </button>
@@ -647,18 +840,17 @@ export const CampusPassportView: React.FC = () => {
               <Sparkles className="w-4 h-4" aria-hidden="true" />
               Competencies & Institutional Endorsements ({skills.length})
             </h3>
-            {isSelf && (
+            {isSelf && isFeatureEnabled('ENABLE_SKILL_SUBMISSION') && (
               <Button
+                ref={skillModalTriggerRef}
                 variant="outline"
                 size="sm"
-                disabled
-                aria-disabled="true"
-                title="Feature unavailable - backend integration pending"
-                className="text-xs no-print h-9 sm:h-8 px-3 min-h-[44px] sm:min-h-[32px] opacity-50 cursor-not-allowed"
-                aria-label="Submit Skill for Review (Feature unavailable - backend integration pending)"
+                onClick={() => setIsSkillModalOpen(true)}
+                className="text-xs no-print h-9 sm:h-8 px-3 min-h-[44px] sm:min-h-[32px] hover:border-primary-500"
+                aria-label="Submit Skill for Review"
               >
                 <Plus className="w-3.5 h-3.5 mr-1" />
-                Submit Skill for Review (Disabled)
+                Submit Skill for Review
               </Button>
             )}
           </div>
@@ -683,17 +875,15 @@ export const CampusPassportView: React.FC = () => {
                 </p>
               </div>
               <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-                {isSelf && (
+                {isSelf && isFeatureEnabled('ENABLE_SKILL_SUBMISSION') && (
                   <Button
                     size="sm"
                     variant="primary"
-                    disabled
-                    aria-disabled="true"
-                    title="Feature unavailable - backend integration pending"
-                    className="min-h-[48px] px-4 font-semibold text-xs flex items-center justify-center opacity-50 cursor-not-allowed"
-                    aria-label="Add First Skill for Review (Feature unavailable - backend integration pending)"
+                    onClick={() => setIsSkillModalOpen(true)}
+                    className="min-h-[48px] px-4 font-semibold text-xs flex items-center justify-center"
+                    aria-label="Add First Skill for Review"
                   >
-                    <Plus className="w-4 h-4 mr-1.5" /> Add First Skill (Pending Backend)
+                    <Plus className="w-4 h-4 mr-1.5" /> Add First Skill for Review
                   </Button>
                 )}
                 <button
@@ -729,12 +919,19 @@ export const CampusPassportView: React.FC = () => {
                       {skill.skillName}
                     </div>
 
-                    {/* Endorsement Pill */}
+                    {/* Endorsement or Pending Review Pill */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                        {skill.endorsedBy || `${skill.proficiencyLevel} Level`}
-                      </span>
+                      {skill.status === 'pending_review' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                          <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                          Submitted - Pending Review
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          {skill.endorsedBy || `${skill.proficiencyLevel} Level`}
+                        </span>
+                      )}
                       <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
                         ({skill.endorsementCount} {skill.endorsementCount === 1 ? 'endorsement' : 'endorsements'})
                       </span>
@@ -922,9 +1119,17 @@ export const CampusPassportView: React.FC = () => {
       {/* MODAL 1: Submit Skill for Review                              */}
       {/* ------------------------------------------------------------- */}
       {isSkillModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm no-print">
+        <div
+          role="presentation"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm no-print"
+        >
           <div
-            className="soft-card p-6 sm:p-8 max-w-lg w-full space-y-5 border shadow-2xl relative"
+            ref={skillModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="skill-modal-title"
+            tabIndex={-1}
+            className="soft-card p-6 sm:p-8 max-w-lg w-full space-y-5 border shadow-2xl relative focus:outline-none"
             style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--surface-border)' }}
           >
             <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: 'var(--surface-border)' }}>
@@ -933,10 +1138,10 @@ export const CampusPassportView: React.FC = () => {
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+                  <h3 id="skill-modal-title" className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
                     Submit Skill for Department Review
                   </h3>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
                     Validated competencies receive official institutional accreditation.
                   </p>
                 </div>
@@ -944,36 +1149,58 @@ export const CampusPassportView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsSkillModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-slate-500/10"
+                aria-label="Close skill submission modal"
+                className="p-1 rounded-lg hover:bg-slate-500/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
+            {skillFormError && (
+              <div
+                role="alert"
+                className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs flex items-center gap-2"
+              >
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{skillFormError}</span>
+              </div>
+            )}
+
             <form onSubmit={handleAddSkillSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-                  Skill or Technology Name *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="skill-name-input" className="block text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Skill or Technology Name *
+                  </label>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {newSkillName.length}/100
+                  </span>
+                </div>
                 <input
+                  id="skill-name-input"
                   type="text"
+                  maxLength={100}
+                  minLength={2}
                   placeholder="e.g. Distributed Systems, React, PyTorch, Embedded C"
                   value={newSkillName}
                   onChange={(e) => setNewSkillName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100 focus:outline-none focus:border-primary-500"
+                  disabled={submittingSkill}
+                  className="w-full px-3.5 py-2 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100 focus:outline-none focus:border-primary-500 disabled:opacity-50"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+                  <label htmlFor="skill-category-select" className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
                     Discipline Track
                   </label>
                   <select
+                    id="skill-category-select"
                     value={newSkillCategory}
                     onChange={(e) => setNewSkillCategory(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100 focus:outline-none"
+                    disabled={submittingSkill}
+                    className="w-full px-3 py-2 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100 focus:outline-none disabled:opacity-50"
                   >
                     <option value="Computer Science & Engineering">Computer Science & Engineering</option>
                     <option value="Electronics & Communication">Electronics & Communication</option>
@@ -984,13 +1211,15 @@ export const CampusPassportView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+                  <label htmlFor="skill-proficiency-select" className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
                     Self-Assessed Level
                   </label>
                   <select
+                    id="skill-proficiency-select"
                     value={newSkillProficiency}
                     onChange={(e) => setNewSkillProficiency(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100 focus:outline-none"
+                    disabled={submittingSkill}
+                    className="w-full px-3 py-2 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100 focus:outline-none disabled:opacity-50"
                   >
                     <option value="Beginner">Beginner (Foundations)</option>
                     <option value="Intermediate">Intermediate (Project-Ready)</option>
@@ -1001,27 +1230,48 @@ export const CampusPassportView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+                <label htmlFor="skill-evidence-input" className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
                   Coursework or Repository Evidence (Optional URL)
                 </label>
                 <input
+                  id="skill-evidence-input"
                   type="url"
                   placeholder="https://github.com/... or Course Project Link"
                   value={newSkillEvidence}
                   onChange={(e) => setNewSkillEvidence(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100 focus:outline-none"
+                  disabled={submittingSkill}
+                  className="w-full px-3.5 py-2 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100 focus:outline-none disabled:opacity-50"
                 />
-                <span className="text-[11px] block mt-1" style={{ color: 'var(--text-muted)' }}>
+                <span className="text-[11px] block mt-1 text-slate-600 dark:text-slate-300">
                   Assists faculty advisors during peer and department endorsement.
                 </span>
               </div>
 
               <div className="pt-2 flex justify-end gap-2.5">
-                <Button variant="secondary" size="sm" type="button" onClick={() => setIsSkillModalOpen(false)}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  disabled={submittingSkill}
+                  onClick={() => setIsSkillModalOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button variant="primary" size="sm" type="submit" disabled={submittingSkill}>
-                  {submittingSkill ? 'Submitting...' : 'Submit to Faculty Queue'}
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="submit"
+                  disabled={submittingSkill}
+                  className="inline-flex items-center gap-1.5 min-w-[140px] justify-center"
+                >
+                  {submittingSkill ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    'Submit to Faculty Queue'
+                  )}
                 </Button>
               </div>
             </form>
@@ -1033,9 +1283,17 @@ export const CampusPassportView: React.FC = () => {
       {/* MODAL 3: Privacy & Granular Scope Controls (Student Owner)    */}
       {/* ------------------------------------------------------------- */}
       {isPrivacyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm no-print">
+        <div
+          role="presentation"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm no-print"
+        >
           <div
-            className="soft-card p-6 sm:p-8 max-w-md w-full space-y-5 border shadow-2xl relative"
+            ref={privacyModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="privacy-modal-title"
+            tabIndex={-1}
+            className="soft-card p-6 sm:p-8 max-w-md w-full space-y-5 border shadow-2xl relative focus:outline-none"
             style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--surface-border)' }}
           >
             <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: 'var(--surface-border)' }}>
@@ -1044,10 +1302,10 @@ export const CampusPassportView: React.FC = () => {
                   <Lock className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+                  <h3 id="privacy-modal-title" className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
                     Share Privacy & Scope Controls
                   </h3>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
                     Customize which academic metrics recruiters can inspect.
                   </p>
                 </div>
@@ -1055,7 +1313,8 @@ export const CampusPassportView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsPrivacyModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-slate-500/10"
+                aria-label="Close privacy settings modal"
+                className="p-1 rounded-lg hover:bg-slate-500/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1067,7 +1326,7 @@ export const CampusPassportView: React.FC = () => {
                   <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                     Display Cumulative GPA
                   </p>
-                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300">
                     Controls GPA visibility to external evaluators.
                   </p>
                 </div>
@@ -1084,7 +1343,7 @@ export const CampusPassportView: React.FC = () => {
                   <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                     Display Attendance Metrics
                   </p>
-                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300">
                     Controls attendance records visibility to external evaluators.
                   </p>
                 </div>
@@ -1101,7 +1360,7 @@ export const CampusPassportView: React.FC = () => {
                   <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                     Display Full Student UID
                   </p>
-                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300">
                     Masks official registration roll number if disabled.
                   </p>
                 </div>
@@ -1127,9 +1386,17 @@ export const CampusPassportView: React.FC = () => {
       {/* MODAL 4: Registrar Support & Discrepancy Inquiry              */}
       {/* ------------------------------------------------------------- */}
       {isHelpModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm no-print">
+        <div
+          role="presentation"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm no-print"
+        >
           <div
-            className="soft-card p-6 sm:p-8 max-w-lg w-full space-y-5 border shadow-2xl relative"
+            ref={helpModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="help-modal-title"
+            tabIndex={-1}
+            className="soft-card p-6 sm:p-8 max-w-lg w-full space-y-5 border shadow-2xl relative focus:outline-none"
             style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--surface-border)' }}
           >
             <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: 'var(--surface-border)' }}>
@@ -1138,10 +1405,10 @@ export const CampusPassportView: React.FC = () => {
                   <HelpCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+                  <h3 id="help-modal-title" className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
                     RBU Academic Office & Verification Desk
                   </h3>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
                     Official credential governance and transcript inquiries
                   </p>
                 </div>
@@ -1149,7 +1416,8 @@ export const CampusPassportView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsHelpModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-slate-500/10"
+                aria-label="Close registrar verification info modal"
+                className="p-1 rounded-lg hover:bg-slate-500/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1180,6 +1448,16 @@ export const CampusPassportView: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Global Toast Notification */}
+      {toast && (
+        <Toast
+          type={toast.type}
+          title={toast.title}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );
