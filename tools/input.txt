@@ -170,4 +170,4 @@ Capture NETWORK TRAFFIC for every authenticated request to verify headers, token
 DO NOT MODIFY PRODUCTION DATA. Use designated test UIDs and clean up submissions after testing.
 TIMEBOX: Complete all journeys within 4 hours. Prioritize Journey A and C if time-constrained.
 7. Execution Command
-Begin Journey A immediately. Start with anonymous access validation, then proceed through full auth flow. Capture all network traffic. After completing Journey A, immediately begin Journey C (adversarial tests) to confirm security holds under live conditions. Document EVERY discrepancy between source code and live behavior. Produce the complete E2E report with Go/No-Go recommendation.
+Begin Journey A immediately. Start with anonymous access validation, then proceed through full auth flow. Capture all network traffic. After completing Journey A, immediately begin Journey C (adversarial tests) to confirm security holds under live conditions. Document EVERY discrepancy between source code and live behavior. Produce the complete E2E report with Go/No-Go recommendation.git 
